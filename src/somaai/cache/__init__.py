@@ -6,7 +6,7 @@ Uses:
 """
 
 from somaai.cache.config import CacheConfig, get_cache_config
-from somaai.cache.decorators import cached_query, cached_embedding, cached_retrieval
+from somaai.cache.decorators import cached_embedding, cached_query, cached_retrieval
 from somaai.cache.semantic import SemanticCache, init_semantic_cache
 from somaai.cache.session import SessionManager
 

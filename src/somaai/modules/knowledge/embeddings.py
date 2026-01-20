@@ -1,11 +1,9 @@
 """Embeddings module."""
 
-from typing import List
-
 
 class EmbeddingModel:
     """Embedding model interface."""
 
-    async def embed(self, texts: List[str]) -> List[List[float]]:
+    async def embed(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings for texts."""
         pass

@@ -1,7 +1,5 @@
 """LLM provider."""
 
-from typing import List
-
 
 class LLMProvider:
     """LLM provider interface."""
@@ -15,6 +13,6 @@ class LLMProvider:
         yield "Generated"
         yield " response"
 
-    async def embed(self, texts: List[str]) -> List[List[float]]:
+    async def embed(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings."""
         return [[0.0] * 768 for _ in texts]

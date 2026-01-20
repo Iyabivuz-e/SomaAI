@@ -1,6 +1,6 @@
 """Dependency injection."""
 
-from typing import Generator
+from collections.abc import Generator
 
 
 def get_db() -> Generator:

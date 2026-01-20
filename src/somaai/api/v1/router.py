@@ -7,13 +7,13 @@ from fastapi import APIRouter
 
 from somaai.api.v1.endpoints import (
     chat,
-    ingest,
-    retrieval,
-    feedback,
-    meta,
-    teacher,
-    quiz,
     docs,
+    feedback,
+    ingest,
+    meta,
+    quiz,
+    retrieval,
+    teacher,
 )
 
 v1_router = APIRouter()

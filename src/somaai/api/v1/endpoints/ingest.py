@@ -3,11 +3,11 @@
 Ingest = {upload, chunk, embed, store}
 """
 
-from fastapi import APIRouter, File, UploadFile, Form, HTTPException
+from fastapi import APIRouter, File, Form, UploadFile
 
+from somaai.contracts.common import GradeLevel, Subject
 from somaai.contracts.docs import IngestJobResponse
 from somaai.contracts.jobs import JobResponse
-from somaai.contracts.common import GradeLevel, Subject
 
 router = APIRouter(prefix="/ingest", tags=["ingest"])
 
@@ -20,21 +20,21 @@ async def ingest_document(
     title: str = Form(None, description="Document title (optional)"),
 ):
     """Upload and ingest a curriculum document.
-    
+
     Accepts file upload with metadata.
     Processing runs as a background job.
-    
+
     Steps:
     1. Validate file type
     2. Save to storage
     3. Create document record
     4. Enqueue ingestion job
-    
+
     Returns:
     - job_id: Background job ID for tracking
     - doc_id: Document ID (immediate)
     - status: "pending"
-    
+
     Ingestion job will:
     - Extract text from document
     - Split into chunks
@@ -47,16 +47,16 @@ async def ingest_document(
 @router.get("/jobs/{job_id}", response_model=JobResponse)
 async def get_ingest_job_status(job_id: str):
     """Get ingestion job status.
-    
+
     Returns:
     - job_id
     - status: pending | running | completed | failed
     - progress_pct: 0-100
     - result_id: doc_id when completed
     - error: Error message if failed
-    
+
     Poll this endpoint to track ingestion progress.
-    
+
     Returns 404 if job not found.
     """
     pass

@@ -3,19 +3,19 @@
 from fastapi import HTTPException, status
 
 
-class SomaAIException(Exception):
+class SomaAIError(Exception):
     """Base exception for SomaAI."""
 
     pass
 
 
-class NotFoundError(SomaAIException):
+class NotFoundError(SomaAIError):
     """Resource not found error."""
 
     pass
 
 
-class ValidationError(SomaAIException):
+class ValidationError(SomaAIError):
     """Validation error."""
 
     pass

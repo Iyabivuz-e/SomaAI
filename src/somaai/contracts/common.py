@@ -1,24 +1,23 @@
 """Common schemas shared across the API."""
 
 from enum import Enum
-from typing import Generic, List, Optional, TypeVar
+from typing import Generic, TypeVar
 
 from pydantic import BaseModel, Field
-
 
 T = TypeVar("T")
 
 
 class UserRole(str, Enum):
     """User role in the system."""
-    
+
     STUDENT = "student"
     TEACHER = "teacher"
 
 
 class GradeLevel(str, Enum):
     """Rwanda education grade levels."""
-    
+
     P1 = "P1"
     P2 = "P2"
     P3 = "P3"
@@ -35,7 +34,7 @@ class GradeLevel(str, Enum):
 
 class Subject(str, Enum):
     """Curriculum subjects."""
-    
+
     MATHEMATICS = "mathematics"
     ENGLISH = "english"
     KINYARWANDA = "kinyarwanda"
@@ -48,11 +47,11 @@ class Subject(str, Enum):
 
 class PaginatedResponse(BaseModel, Generic[T]):
     """Generic paginated response wrapper.
-    
+
     Used for list endpoints that support pagination.
     """
-    
-    items: List[T] = Field(..., description="List of items in current page")
+
+    items: list[T] = Field(..., description="List of items in current page")
     total: int = Field(..., description="Total number of items")
     page: int = Field(1, description="Current page number (1-indexed)")
     page_size: int = Field(20, description="Number of items per page")

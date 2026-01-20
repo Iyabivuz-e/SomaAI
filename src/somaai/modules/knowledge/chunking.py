@@ -1,7 +1,5 @@
 """Document chunking."""
 
-from typing import List
-
 
 class Chunker:
     """Document chunker."""
@@ -11,7 +9,7 @@ class Chunker:
         self.chunk_size = chunk_size
         self.overlap = overlap
 
-    def chunk(self, text: str) -> List[str]:
+    def chunk(self, text: str) -> list[str]:
         """Chunk text into smaller pieces."""
         chunks = []
         start = 0

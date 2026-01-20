@@ -1,15 +1,13 @@
 """Quiz endpoints."""
 
-from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Query
 
 from somaai.contracts.quiz import (
+    DownloadFormat,
+    DownloadVariant,
     QuizGenerateRequest,
     QuizResponse,
-    DownloadVariant,
-    DownloadFormat,
 )
-from somaai.contracts.jobs import JobResponse
 
 router = APIRouter(prefix="/quiz", tags=["quiz"])
 
@@ -19,18 +17,18 @@ async def generate_quiz(
     data: QuizGenerateRequest,
 ):
     """Generate a new quiz.
-    
+
     Request body:
     - topic_ids: List of topic IDs to cover
     - difficulty: easy | medium | hard
     - num_questions: Number of questions (1-50)
     - include_answer_key: Include detailed answers with citations
-    
+
     Returns:
     - quiz_id: ID for the quiz
     - job_id: Background job ID for tracking
     - status: "pending"
-    
+
     Quiz generation runs as a background job.
     Poll GET /quiz/{quiz_id} for completion.
     """
@@ -40,12 +38,12 @@ async def generate_quiz(
 @router.get("/{quiz_id}", response_model=QuizResponse)
 async def get_quiz(quiz_id: str):
     """Get quiz details and questions.
-    
+
     Returns quiz with:
     - Status (pending/generating/completed/failed)
     - Topic names and difficulty
     - Questions and answers (if completed)
-    
+
     Returns 404 if quiz not found.
     """
     pass
@@ -64,13 +62,13 @@ async def download_quiz(
     ),
 ):
     """Download quiz as PDF or DOCX.
-    
+
     Query params:
     - variant: "questions" or "questions_answers"
     - format: "pdf" or "docx" (pdf implemented first)
-    
+
     Returns file download.
-    
+
     Returns 400 if quiz not completed.
     Returns 404 if quiz not found.
     """

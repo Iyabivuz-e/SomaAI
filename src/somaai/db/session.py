@@ -4,12 +4,11 @@ Provides async database sessions for FastAPI dependency injection.
 Supports both PostgreSQL (production) and SQLite (testing).
 """
 
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from somaai.settings import settings
-
 
 # Create async engine
 engine = create_async_engine(
@@ -30,7 +29,7 @@ async_session_maker = async_sessionmaker(
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """Get an async database session.
-    
+
     Usage with FastAPI:
         @router.get("/items")
         async def get_items(db: AsyncSession = Depends(get_session)):
@@ -50,19 +49,19 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db() -> None:
     """Initialize database tables.
-    
+
     Creates all tables defined in models.
     Use Alembic for production migrations.
     """
     from somaai.db.base import Base
-    
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
 
 async def close_db() -> None:
     """Close database connections.
-    
+
     Call on application shutdown.
     """
     await engine.dispose()
