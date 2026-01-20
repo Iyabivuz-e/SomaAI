@@ -8,45 +8,65 @@ Thank you for your interest in contributing to SomaAI. This document provides gu
 
 - Python 3.10 or higher
 - [uv](https://github.com/astral-sh/uv) package manager
-- Docker (optional, for containerized development)
-- Redis (optional, for caching features)
-- Qdrant (optional, for vector database)
+- Docker (recommended for full development environment)
 
 ### Local Development Setup
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Rwanda-AI-Network/SomaAI.git
-   cd SomaAI
-   ```
+**Option 1: Full Stack with Docker (Recommended)**
 
-2. Install dependencies:
-   ```bash
-   # Core dependencies
-   make install
-   
-   # Or with uv directly
-   uv sync
-   
-   # With caching support (Redis, GPTCache)
-   uv sync --extra cache
-   
-   # With vector database support (Qdrant)
-   uv sync --extra vectordb
-   
-   # All optional dependencies
-   uv sync --extra all
-   ```
+```bash
+# Clone and enter the repository
+git clone https://github.com/Rwanda-AI-Network/SomaAI.git
+cd SomaAI
 
-3. Run the development server:
-   ```bash
-   make dev
-   ```
+# Copy environment variables
+cp .env.example .env
 
-4. (Optional) Run with Docker:
-   ```bash
-   make docker
-   ```
+# Start all services (postgres, redis, qdrant, app)
+make docker
+```
+
+This starts:
+- PostgreSQL on `localhost:5432`
+- Redis on `localhost:6379`
+- Qdrant on `http://localhost:6333`
+- App on `http://localhost:8000`
+
+**Option 2: Local Python Development**
+
+```bash
+# Install dependencies
+make install
+
+# Or with all optional dependencies
+uv sync --extra all
+
+# Start external services separately, then:
+make dev
+```
+
+## Project Architecture
+
+```
+src/somaai/
+├── api/v1/endpoints/  # REST API endpoints
+├── contracts/         # Pydantic schemas (requests/responses)
+├── cache/             # Caching layer (Redis-backed)
+├── db/                # Database models (SQLAlchemy)
+├── jobs/              # Background tasks (Redis queue)
+├── modules/           # Business logic
+│   ├── chat/          # Chat + citations
+│   ├── docs/          # Document viewing
+│   ├── feedback/      # Response ratings
+│   ├── ingest/        # Document ingestion
+│   ├── meta/          # Grades, subjects, topics
+│   ├── quiz/          # Quiz generation
+│   ├── rag/           # RAG pipeline
+│   ├── teacher/       # Teacher profiles
+│   └── knowledge/     # Embeddings & vectors
+├── providers/         # External service adapters
+└── tests/             # Test suite
+```
 
 ## Development Workflow
 
@@ -75,13 +95,11 @@ We use [Ruff](https://github.com/astral-sh/ruff) for linting and formatting:
 
 ```bash
 # Check linting
-ruff check src/
+make lint
 
-# Auto-fix issues
-ruff check src/ --fix
-
-# Format code
-ruff format src/
+# Or directly
+uv run ruff check src/
+uv run ruff format src/
 ```
 
 ### Testing
@@ -93,7 +111,25 @@ Write tests for new functionality:
 make test
 
 # Run specific test file
-uv run pytest src/somaai/tests/test_specific.py -v
+uv run pytest src/somaai/tests/test_chat.py -v
+
+# Run with coverage
+uv run pytest --cov=somaai
+```
+
+### Database Migrations
+
+We use Alembic for database migrations:
+
+```bash
+# Generate a new migration
+uv run alembic revision --autogenerate -m "Add new table"
+
+# Apply migrations
+uv run alembic upgrade head
+
+# Rollback
+uv run alembic downgrade -1
 ```
 
 ### Available Make Commands
@@ -105,16 +141,34 @@ uv run pytest src/somaai/tests/test_specific.py -v
 | `make dev` | Run development server |
 | `make lint` | Run linting (ruff + mypy) |
 | `make test` | Run tests |
-| `make run` | Run the application |
-| `make clean` | Clean up build artifacts |
-| `make docker` | Run with Docker (app + redis + qdrant) |
+| `make docker` | Run with Docker (postgres + redis + qdrant) |
 | `make docker-stop` | Stop Docker containers |
+| `make clean` | Clean build artifacts |
+
+## Adding New Features
+
+### Adding a New Endpoint
+
+1. Create schema in `contracts/`
+2. Create service in `modules/{module}/service.py`
+3. Create endpoint in `api/v1/endpoints/{module}.py`
+4. Register router in `api/v1/router.py`
+5. Add tests in `tests/test_{module}.py`
+
+### Adding a New Module
+
+```
+modules/new_module/
+├── __init__.py      # Exports
+├── service.py       # Business logic
+└── (other files)    # As needed
+```
 
 ## Pull Request Guidelines
 
 Before submitting a PR:
 
-- [ ] Code follows the project style guidelines
+- [ ] Code follows the project style guidelines (ruff passes)
 - [ ] All tests pass locally
 - [ ] New functionality includes tests
 - [ ] Documentation is updated if needed
@@ -134,8 +188,17 @@ When reporting bugs, please include:
 
 - Steps to reproduce the issue
 - Expected vs actual behavior
-- Environment details (OS, Python version)
+- Environment details (OS, Python version, Docker version)
 - Relevant logs or error messages
+
+## Database Strategy
+
+| Environment | Database |
+|-------------|----------|
+| Development | PostgreSQL (Docker) |
+| Production | NeonDB (serverless Postgres) |
+
+Both use the same SQLAlchemy models and Alembic migrations.
 
 ## Questions?
 

@@ -1,17 +1,43 @@
-"""API v1 router."""
+"""API v1 router.
+
+Aggregates all v1 endpoint routers.
+"""
 
 from fastapi import APIRouter
 
-from somaai.api.v1.endpoints import admin, chat, feedback, ingest, retrieval
+from somaai.api.v1.endpoints import (
+    chat,
+    ingest,
+    retrieval,
+    feedback,
+    meta,
+    teacher,
+    quiz,
+    docs,
+)
 
 v1_router = APIRouter()
 
-# TODO:
-# Remove some routes
-# Add some routes
+# Chat - Student and teacher Q&A
+v1_router.include_router(chat.router)
 
-v1_router.include_router(chat.router, prefix="/chat", tags=["chat"])
-v1_router.include_router(ingest.router, prefix="/ingest", tags=["ingest"])
-v1_router.include_router(retrieval.router, prefix="/retrieval", tags=["retrieval"])
-v1_router.include_router(feedback.router, prefix="/feedback", tags=["feedback"])
-v1_router.include_router(admin.router, prefix="/admin", tags=["admin"])
+# Meta - Grades, subjects, topics
+v1_router.include_router(meta.router)
+
+# Teacher - Profile management
+v1_router.include_router(teacher.router)
+
+# Quiz - Quiz generation and download
+v1_router.include_router(quiz.router)
+
+# Documents - Document viewing
+v1_router.include_router(docs.router)
+
+# Ingest - Document ingestion
+v1_router.include_router(ingest.router)
+
+# Retrieval - Debug/admin search
+v1_router.include_router(retrieval.router)
+
+# Feedback - Response ratings
+v1_router.include_router(feedback.router)

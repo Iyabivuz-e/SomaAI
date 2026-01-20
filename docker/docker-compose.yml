@@ -9,9 +9,12 @@ services:
     env_file:
       - ../.env
     environment:
+      - DATABASE_URL=postgresql+asyncpg://somaai:somaai@postgres:5432/somaai
       - REDIS_URL=redis://redis:6379/0
       - QDRANT_URL=http://qdrant:6333
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
       qdrant:
@@ -20,7 +23,27 @@ services:
     networks:
       - somaai-network
 
-  # Redis - Caching & Session Storage
+  # PostgreSQL - Primary Database
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=somaai
+      - POSTGRES_PASSWORD=somaai
+      - POSTGRES_DB=somaai
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U somaai -d somaai" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - somaai-network
+
+  # Redis - Caching & Session Storage & Job Queue
   redis:
     image: redis:7-alpine
     ports:
@@ -37,12 +60,12 @@ services:
     networks:
       - somaai-network
 
-  # Qdrant - Vector Database  
+  # Qdrant - Vector Database
   qdrant:
     image: qdrant/qdrant:latest
     ports:
-      - "6333:6333" # REST API
-      - "6334:6334" # gRPC
+      - "6333:6333"
+      - "6334:6334"
     volumes:
       - qdrant_data:/qdrant/storage
     environment:
@@ -58,6 +81,7 @@ services:
       - somaai-network
 
 volumes:
+  postgres_data:
   redis_data:
   qdrant_data:
 
