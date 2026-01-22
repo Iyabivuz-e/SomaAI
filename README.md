@@ -1,8 +1,4 @@
 
-<p align="center">
-  <img src="./docs/SomaAI_text.png" alt="SomaAI Banner" width="100%" />
-</p>
-
 # SomaAI
 
 SomaAI is an open-source, AI-powered learning platform designed to improve teaching and learning across Rwanda.
