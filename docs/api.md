@@ -22,5 +22,4 @@
 ### Feedback
 - `POST /feedback` - Submit feedback
 
-### Admin
-- `GET /admin/stats` - Get system statistics
+

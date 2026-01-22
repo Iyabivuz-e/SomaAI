@@ -22,6 +22,13 @@ class ChatRequest(BaseModel):
         None, description="Conversation session ID for context"
     )
     user_role: UserRole = Field(default=UserRole.STUDENT, description="User role")
+    teaching_classes: list[str] | None = Field(
+        None, description="Teaching classes for teachers only"
+    )
+    preferences: dict[str, str] | None = Field(
+        None, description="User preferences for context"
+    )
+    
     enable_analogy: bool | None = Field(None, description="Include analogy in response")
     enable_realworld: bool | None = Field(
         None, description="Include real-world context"

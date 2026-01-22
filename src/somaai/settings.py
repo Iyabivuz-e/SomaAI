@@ -49,10 +49,10 @@ class Settings(BaseSettings):
     cache_session_ttl: int = 3600
 
     # Semantic Cache
-    cache_semantic_enabled: bool = True
-    cache_similarity_threshold: float = 0.92
-    cache_embedding_dim: int = 768
-    cache_namespace: str = "somaai"
+    # cache_semantic_enabled: bool = True
+    # cache_similarity_threshold: float = 0.92
+    # cache_embedding_dim: int = 768
+    # cache_namespace: str = "somaai"
 
     # LLM Provider
     llm_provider: str = "openai"  # openai | anthropic | huggingface

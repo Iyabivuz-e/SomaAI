@@ -11,7 +11,7 @@ class ClassTaught(BaseModel):
     """A class (grade + subject combination) taught by a teacher."""
 
     grade: GradeLevel = Field(..., description="Grade level")
-    subject: Subject = Field(..., description="Subject")
+    # subject: Subject = Field(..., description="Subject")
 
 
 class TeacherProfileRequest(BaseModel):

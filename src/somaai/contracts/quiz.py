@@ -53,6 +53,9 @@ class QuizGenerateRequest(BaseModel):
     include_answer_key: bool = Field(
         True, description="Include detailed answers with citations"
     )
+    include_citations: bool = Field(
+        True, description="Include citations in answers"
+    )
 
 
 class QuizItemCitation(BaseModel):

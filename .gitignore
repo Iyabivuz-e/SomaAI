@@ -122,7 +122,3 @@ secrets/
 
 # Docker
 docker-compose.override.yml
-
-
-todo.md
-./todo.md
