@@ -44,7 +44,7 @@ class CitationResponse(BaseModel):
 
     doc_id: str = Field(..., description="Source document ID")
     doc_title: str = Field(..., description="Document title/filename")
-    page_start: int = Field(..., ge=1 description="First item index in current page (0-indexed)")
+    page_start: int = Field(..., ge=1, description="First item index in current page (0-indexed)")
     page_end: int = Field(..., ge=1, description="Last item index in current page (0-indexed)")
     chunk_preview: str = Field(
         ..., max_length=200, description="Preview of cited content"

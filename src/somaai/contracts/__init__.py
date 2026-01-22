@@ -18,9 +18,8 @@ from somaai.contracts.common import (
 )
 from somaai.contracts.docs import (
     DocumentResponse,
-    DocumentViewResponse,
     IngestJobResponse,
-    IngestRequest,
+    # IngestRequest,
 )
 from somaai.contracts.errors import (
     ErrorResponse,
@@ -66,8 +65,7 @@ __all__ = [
     "CitationResponse",
     # Docs
     "DocumentResponse",
-    "DocumentViewResponse",
-    "IngestRequest",
+    # "IngestRequest",
     "IngestJobResponse",
     # Quiz
     "QuizGenerateRequest",
