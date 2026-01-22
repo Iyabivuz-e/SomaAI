@@ -1,19 +1,11 @@
 """Background job schemas."""
 
 from datetime import datetime
-from enum import Enum
 from typing import Any
 
+from somaai.contracts.common import JobStatus
+
 from pydantic import BaseModel, Field
-
-
-class JobStatus(str, Enum):
-    """Background job status."""
-
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
 
 
 class JobResponse(BaseModel):

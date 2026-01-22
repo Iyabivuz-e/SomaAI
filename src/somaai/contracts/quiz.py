@@ -3,15 +3,10 @@
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
+from somaai.contracts.common import GradeLevel, Subject, DifficultyLevel
 
-class DifficultyLevel(str, Enum):
-    """Quiz difficulty levels."""
-
-    EASY = "easy"
-    MEDIUM = "medium"
-    HARD = "hard"
 
 
 class QuizStatus(str, Enum):
@@ -56,6 +51,15 @@ class QuizGenerateRequest(BaseModel):
     include_citations: bool = Field(
         True, description="Include citations in answers"
     )
+    grade: GradeLevel = Field(..., description="Grade level")
+    subject: Subject = Field(..., description="Subject")
+
+    @model_validator(mode="after")
+    def validate_flags(self):
+        if not self.include_answer_key and self.include_citations:
+            raise ValueError("include_citations cannot be true when include_answer_key is false")
+        return self
+
 
 
 class QuizItemCitation(BaseModel):
@@ -63,7 +67,8 @@ class QuizItemCitation(BaseModel):
 
     doc_id: str = Field(..., description="Source document ID")
     doc_title: str = Field(..., description="Document title")
-    page_number: int = Field(..., description="Page number")
+    page_end: int = Field(..., ge=1, description="Last item index in current page (0-indexed)")
+    has_next: bool = Field(..., description="Whether there are more pages")
     excerpt: str = Field(..., description="Relevant excerpt")
 
 
@@ -76,6 +81,7 @@ class QuizItemResponse(BaseModel):
     item_id: str = Field(..., description="Quiz item ID")
     order: int = Field(..., description="Question order (1-indexed)")
     question: str = Field(..., description="Question text")
+    options: list[str] | None = Field(None, description="MCQ Answer options")
     answer: str | None = Field(None, description="Answer text (if include_answer_key)")
     answer_citations: list[QuizItemCitation] | None = Field(
         None, description="Answer source citations"

@@ -1,5 +1,7 @@
 """Metadata endpoint schemas."""
 
+from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -34,18 +36,14 @@ class TopicResponse(BaseModel):
     Topics are hierarchical and tied to grade+subject.
     """
 
-    id: str = Field(..., description="Topic ID")
-    name: str = Field(..., description="Topic name")
+    topic_id: str = Field(..., description="Topic ID")
+    title: str = Field(..., description="Topic name")
     grade: str = Field(..., description="Grade ID")
     subject: str = Field(..., description="Subject ID")
-    parent_id: str | None = Field(None, description="Parent topic ID (for sub-topics)")
-    children: list["TopicResponse"] = Field(
-        default_factory=list, description="Child topics"
-    )
+    doc_id: str = Field(..., description="Document ID")
+    page_start: int = Field(..., ge=1, description="Page start")
+    page_end: int = Field(..., ge=1, description="Page end")
+    path: List[str] = Field(default_factory=list, description="Path to topic")
     document_count: int = Field(
         0, description="Number of documents covering this topic"
     )
-
-
-# Required for self-referencing model
-TopicResponse.model_rebuild()

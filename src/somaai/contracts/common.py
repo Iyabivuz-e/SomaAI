@@ -8,6 +8,14 @@ from pydantic import BaseModel, Field
 T = TypeVar("T")
 
 
+class DifficultyLevel(str, Enum):
+    """Quiz difficulty levels."""
+
+    EASY = "easy"
+    MEDIUM = "medium"
+    HARD = "hard"
+
+
 class UserRole(str, Enum):
     """User role in the system."""
 
@@ -18,11 +26,6 @@ class UserRole(str, Enum):
 class GradeLevel(str, Enum):
     """Rwanda education grade levels."""
 
-    P1 = "P1"
-    P2 = "P2"
-    P3 = "P3"
-    P4 = "P4"
-    P5 = "P5"
     P6 = "P6"
     S1 = "S1"
     S2 = "S2"
@@ -43,6 +46,7 @@ class Subject(str, Enum):
     SOCIAL_STUDIES = "social_studies"
     ICT = "ict"
     ENTREPRENEURSHIP = "entrepreneurship"
+    COMPUTER_SCIENCE = "computer_science"
 
 
 class PaginatedResponse(BaseModel, Generic[T]):
@@ -53,7 +57,23 @@ class PaginatedResponse(BaseModel, Generic[T]):
 
     items: list[T] = Field(..., description="List of items in current page")
     total: int = Field(..., description="Total number of items")
-    page: int = Field(1, description="Current page number (1-indexed)")
-    page_size: int = Field(20, description="Number of items per page")
+    page_start: int = Field(..., ge=1, description="First item index in current page (0-indexed)")
+    page_end: int = Field(..., ge=1, description="Last item index in current page (0-indexed)")
     has_next: bool = Field(..., description="Whether there are more pages")
     has_prev: bool = Field(..., description="Whether there are previous pages")
+
+
+class Sufficiency(str, Enum):
+    """Answer sufficiency levels."""
+
+    SUFFICIENT = "sufficient"
+    INSUFFICIENT = "insufficient"
+
+
+class JobStatus(str, Enum):
+    """Background job status."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"

@@ -4,7 +4,12 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from somaai.contracts.common import GradeLevel, Subject, UserRole
+from somaai.contracts.common import GradeLevel, Subject, UserRole, Sufficiency
+
+
+class Preferences(BaseModel):
+    enable_analogy: bool = Field(False, description="Include analogy in response")
+    enable_realworld: bool = Field(False, description="Include real-world context")
 
 
 class ChatRequest(BaseModel):
@@ -13,7 +18,7 @@ class ChatRequest(BaseModel):
     Used by both students and teachers to ask questions.
     """
 
-    query: str = Field(
+    question: str = Field(
         ..., min_length=1, max_length=2000, description="User's question"
     )
     grade: GradeLevel = Field(..., description="Grade level for context")
@@ -22,13 +27,13 @@ class ChatRequest(BaseModel):
         None, description="Conversation session ID for context"
     )
     user_role: UserRole = Field(default=UserRole.STUDENT, description="User role")
-    teaching_classes: list[str] | None = Field(
+    teaching_classes: list[GradeLevel] | None = Field(
         None, description="Teaching classes for teachers only"
     )
+    preferences: Preferences = Field(
+        default_factory=Preferences, description="User preferences for context"
+    )
 
-class Preferences(BaseModel):
-    enable_analogy: bool = Field(False, description="Include analogy in response")
-    enable_realworld: bool = Field(False, description="Include real-world context")
 
 
 class CitationResponse(BaseModel):
@@ -39,7 +44,8 @@ class CitationResponse(BaseModel):
 
     doc_id: str = Field(..., description="Source document ID")
     doc_title: str = Field(..., description="Document title/filename")
-    page_number: int = Field(..., description="Page number in document")
+    page_start: int = Field(..., ge=1 description="First item index in current page (0-indexed)")
+    page_end: int = Field(..., ge=1, description="Last item index in current page (0-indexed)")
     chunk_preview: str = Field(
         ..., max_length=200, description="Preview of cited content"
     )
@@ -54,8 +60,8 @@ class ChatResponse(BaseModel):
     """
 
     message_id: str = Field(..., description="Unique message ID for reference")
-    response: str = Field(..., description="AI-generated answer")
-    sufficiency: bool = Field(
+    answer: str = Field(..., description="AI-generated answer")
+    sufficiency: Sufficiency = Field(
         ..., description="Whether context was sufficient for answer"
     )
     citations: list[CitationResponse] = Field(
@@ -79,9 +85,9 @@ class MessageResponse(BaseModel):
         None, description="Session ID if part of conversation"
     )
     user_role: UserRole = Field(..., description="Role of user who asked")
-    query: str = Field(..., description="Original question")
-    response: str = Field(..., description="AI-generated answer")
-    sufficiency: bool = Field(..., description="Whether context was sufficient")
+    question: str = Field(..., description="Original question")
+    answer: str = Field(..., description="AI-generated answer")
+    sufficiency: Sufficiency = Field(..., description="Whether context was sufficient")
     grade: GradeLevel = Field(..., description="Grade level context")
     subject: Subject = Field(..., description="Subject context")
     citations: list[CitationResponse] = Field(
