@@ -11,6 +11,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -202,15 +203,20 @@ class Feedback(Base):
         String(36),
         ForeignKey("messages.id", ondelete="CASCADE"),
         nullable=False,
-        unique=True,
+        # unique=True, This will be unique after adding the authentication
     )
+    # Actor ID for MVP to know who gave the feedback
+    actor_id = Column(String(64), nullable=False, index=True)
     useful = Column(Boolean, nullable=False)
     text = Column(Text, nullable=True)
     tags = Column(JSON, default=list)
+    user_role = Column(String(20), nullable=True)  # student or teacher
     created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
 
-    # Relationships
     message = relationship("Message", back_populates="feedback")
+
+    __table_args__ = (Index("ix_feedback_message_id", "message_id", unique=True),)
 
 
 class Quiz(Base):
@@ -235,7 +241,6 @@ class Quiz(Base):
     created_at = Column(DateTime, server_default=func.now())
     completed_at = Column(DateTime, nullable=True)
 
-    # Relationships
     items = relationship(
         "QuizItem", back_populates="quiz", cascade="all, delete-orphan"
     )
@@ -263,7 +268,6 @@ class QuizItem(Base):
     options = Column(JSON, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 
-    # Relationships
     quiz = relationship("Quiz", back_populates="items")
 
 

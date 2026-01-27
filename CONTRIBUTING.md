@@ -34,6 +34,8 @@ cd SomaAI
 # Copy environment variables
 cp .env.example .env
 
+uv sync
+
 # Start all services (postgres, redis, qdrant, app)
 make docker
 ```
