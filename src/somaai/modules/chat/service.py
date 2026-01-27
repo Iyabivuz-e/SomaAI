@@ -17,6 +17,9 @@ class ChatService:
     async def get_message(self, session_id: str) -> ChatResponse:
         """Get messages for a session."""
         return ChatResponse()
-    async def get_message_citations(self, message_id: str, actor_id: str) -> ChatResponse:
+
+    async def get_message_citations(
+        self, message_id: str, actor_id: str
+    ) -> ChatResponse:
         """Get citations for a message."""
         return ChatResponse()

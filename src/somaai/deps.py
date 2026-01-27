@@ -1,14 +1,13 @@
 """Dependency injection."""
 
-from fastapi import Header, Request, Depends
-
-from somaai.providers.llm import LLMClient
-from somaai.settings import Settings, settings
-from somaai.utils.ids import generate_short_id
+from fastapi import Depends, Header, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from somaai.db.session import get_session
 from somaai.modules.chat.service import ChatService
-from sqlalchemy.ext.asyncio import AsyncSession
+from somaai.providers.llm import LLMClient
+from somaai.settings import Settings, settings
+from somaai.utils.ids import generate_short_id
 
 
 def get_settings() -> Settings:
@@ -43,4 +42,3 @@ def get_actor_id(x_actor_id: str | None = Header(None, alias="X-Actor-Id")) -> s
 
 def get_chat_service(db: AsyncSession = Depends(get_session)) -> ChatService:
     return ChatService(db)
-
