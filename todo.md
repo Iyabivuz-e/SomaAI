@@ -1,13 +1,10 @@
 Todo:::::
 
-
- 
- 
- 30
-        request: FeedbackRequest,
-        actor_id: str | None = None,
-    ) -> FeedbackResponse:
-Copilot AI
-yesterday
-
-actor_id is typed as str | None and passed directly into the Feedback model, but the actor_id column is declared nullable=False, so calling this service with actor_id=None would violate the DB constraint. Either make actor_id a required str in the service API (matching the DB schema) or add defensive handling for None (e.g., generate a fallback or raise a clear error) to keep the type annotation and runtime behavior consistent.
+1. Refactor the chat service to use the new RAG pipeline
+2. Add tests for the chat service
+3. Refactor the citations to be in their own file
+4. llm provider should be implemented.
+5. Refactor the models to SQLAlchemy 2.0 style (Option 2), which provides:
+    - Better type safety
+    - Better IDE autocomplete
+    - No need for casts
