@@ -14,7 +14,7 @@ def build_answer_prompt(inp: RAGInput, context_snippets: list[str]) -> str:
         Formatted prompt for LLM
     """
     context = "\n\n".join(
-        f"[Source {i+1}]: {snippet}" for i, snippet in enumerate(context_snippets)
+        f"[Source {i + 1}]: {snippet}" for i, snippet in enumerate(context_snippets)
     )
 
     role_context = (

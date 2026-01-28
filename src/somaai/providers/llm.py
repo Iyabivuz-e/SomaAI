@@ -19,7 +19,7 @@ class MockLLMProvider:
     """Mock LLM provider for local dev/tests (no API keys needed)."""
 
     async def generate(self, prompt: str) -> str:
-        return prompt[:200]
+        return f"MOCK_ANSWER: {prompt[:100]}"
 
     async def generate_stream(self, prompt: str) -> AsyncIterator[str]:
         text = await self.generate(prompt)

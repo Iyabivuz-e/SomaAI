@@ -80,8 +80,7 @@ class MockRAGPipeline:
 
         return RAGResult(
             answer=(
-                answer
-                or "I couldn't find enough information to answer your question."
+                answer or "I couldn't find enough information to answer your question."
             ),
             sufficiency=sufficiency,
             retrieved_chunks=chunks,

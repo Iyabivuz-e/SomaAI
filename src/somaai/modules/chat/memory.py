@@ -53,9 +53,9 @@ class MemoryLoader:
         history = []
         for msg in reversed(messages):
             # Add user question
-            history.append({"role": "user", "content": msg.question})
+            history.append({"role": "user", "content": str(msg.question)})
             # Add AI answer
-            history.append({"role": "assistant", "content": msg.answer})
+            history.append({"role": "assistant", "content": str(msg.answer)})
 
         return history
 
@@ -69,7 +69,9 @@ class MemoryLoader:
         for turn in history:
             role = "Student" if turn["role"] == "user" else "SomaAI"
             # Truncate to avoid exploding context window (simple rule)
-            content = turn["content"][:600] + ("..." if len(turn["content"]) > 600 else "")
+            content = turn["content"][:600] + (
+                "..." if len(turn["content"]) > 600 else ""
+            )
             lines.append(f"{role}: {content}")
-        
+
         return "\n".join(lines)

@@ -65,11 +65,13 @@ class ChatService:
             actor_id=actor_id,
         )
         # 3. Preparation: Fetch History
-        history_turns = await self.memory_loader.get_recent_turns(
-            session_id=data.session_id,
-            actor_id=actor_id,
-            limit=6,
-        )
+        history_turns: list[dict[str, str]] = []
+        if data.session_id:
+            history_turns = await self.memory_loader.get_recent_turns(
+                session_id=data.session_id,
+                actor_id=actor_id,
+                limit=6,
+            )
         history_text = self.memory_loader.format_history_for_prompt(history_turns)
 
         # 4. Run RAG pipeline (retrieve → generate)
