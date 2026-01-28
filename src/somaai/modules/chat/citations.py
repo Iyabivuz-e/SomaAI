@@ -67,11 +67,16 @@ class CitationManager:
         # For simplicity, we'll iterate rag_chunks which have the chunk_id needed for DB
 
         for idx, chunk_data in enumerate(rag_chunks):
+            # Skip if chunk_id is missing (e.g., in mock mode)
+            chunk_id = chunk_data.get("chunk_id")
+            if not chunk_id:
+                continue
+
             # Create DB record
             citation_db = MessageCitation(
                 id=generate_id(),
                 message_id=message_id,
-                chunk_id=chunk_data["chunk_id"],
+                chunk_id=chunk_id,
                 relevance_score=chunk_data.get("score", 0.0),
                 order=idx,
                 snippet=chunk_data.get("snippet", ""),

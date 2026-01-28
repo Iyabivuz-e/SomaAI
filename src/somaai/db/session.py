@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from somaai.settings import settings
 
 # Create async engine
+print(f"DEBUG: Connecting to DB URL: {settings.database_url.split('@')[-1] if '@' in settings.database_url else 'local/sqlite'}")
+
 engine = create_async_engine(
     settings.database_url,
     echo=settings.debug,

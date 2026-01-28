@@ -16,7 +16,8 @@ from somaai.contracts.chat import (
 from somaai.contracts.common import GradeLevel, Subject, Sufficiency, UserRole
 from somaai.db.models import Message, TeacherProfile
 from somaai.modules.chat.citations import CitationManager
-from somaai.modules.rag.pipelines import RAGPipeline
+from somaai.modules.rag.pipelines import BaseRAGPipeline
+from somaai.modules.rag.types import RAGInput
 from somaai.utils.ids import generate_id
 from somaai.utils.time import utc_now
 
@@ -24,13 +25,15 @@ from somaai.utils.time import utc_now
 class ChatService:
     """Chat service."""
 
-    def __init__(self, db: AsyncSession) -> None:
-        """Initialize ChatService with database session.
+    def __init__(self, db: AsyncSession, rag_pipeline: BaseRAGPipeline) -> None:
+        """Initialize ChatService with database session and RAG pipeline.
+
         Args:
             db: Async database session for persistence
+            rag_pipeline: RAG pipeline instance for answer generation
         """
         self.db = db
-        self.rag_pipeline = RAGPipeline()
+        self.rag_pipeline = rag_pipeline
         self.citation_manager = CitationManager(db)
 
     async def ask(
@@ -65,6 +68,8 @@ class ChatService:
             grade=data.grade.value,
             subject=data.subject.value,
             preferences=effective_preferences,
+            user_role=data.user_role,
+            teaching_classes=data.teaching_classes,
         )
         # 4. Generate message ID and timestamp
         message_id = generate_id()
@@ -194,47 +199,61 @@ class ChatService:
         grade: str,
         subject: str,
         preferences: Preferences,
+        user_role: UserRole,
+        teaching_classes: list[GradeLevel] | None,
     ) -> dict:
         """Run the RAG pipeline to generate an answer.
+
         Args:
             question: Normalized user question
             grade: Grade level for filtering
             subject: Subject for filtering
             preferences: Effective preferences for generation
+            user_role: User role (student/teacher)
+            teaching_classes: Teaching classes for teachers
+
         Returns:
-            Dict with keys:
+            Dict with keys compatible with existing ChatService logic:
             - answer: Generated response text
             - sufficiency: "sufficient" or "insufficient"
-            - retrieved_chunks: List of chunk metadata for citations
+            - retrieved_chunks: List of chunk dicts for citations
             - analogy: Optional analogy text
             - realworld_context: Optional real-world context text
         """
-        # TODO: Enhance RAG pipeline to accept grade/subject filters
-        # and return structured result with chunk metadata
-        # For now, use existing pipeline
-        answer = await self.rag_pipeline.run(question)
-        # Determine sufficiency based on whether we got a meaningful answer
-        # This should ideally come from the pipeline itself
-        sufficiency = "sufficient" if answer and len(answer) > 50 else "insufficient"
-        # TODO: Implement analogy and realworld generation in pipeline
-        analogy = None
-        realworld_context = None
-        if preferences.enable_analogy:
-            # TODO: Call AnalogyGenerator
-            analogy = None
-        if preferences.enable_realworld:
-            # TODO: Call RealWorldUseCaseGenerator
-            realworld_context = None
-        # TODO: Return actual retrieved chunks from pipeline
-        # For now returning empty list - pipeline needs enhancement
-        retrieved_chunks: list[dict] = []
+        # Build RAG input
+        rag_input = RAGInput(
+            query=question,
+            grade=GradeLevel(grade),
+            subject=Subject(subject),
+            user_role=user_role,
+            teaching_classes=teaching_classes,
+            enable_analogy=preferences.enable_analogy or False,
+            enable_realworld=preferences.enable_realworld or False,
+        )
+
+        # Run pipeline
+        result = await self.rag_pipeline.run(rag_input)
+
+        # Convert RetrievedChunk to dict for CitationManager
+        retrieved_chunks = [
+            {
+                "chunk_id": chunk.chunk_id,
+                "doc_id": chunk.doc_id,
+                "doc_title": chunk.doc_title,
+                "page_start": chunk.page_start,
+                "page_end": chunk.page_end,
+                "snippet": chunk.snippet,
+                "score": chunk.score,
+            }
+            for chunk in result.retrieved_chunks
+        ]
+
         return {
-            "answer": answer
-            or "I couldn't find enough information to answer your question.",
-            "sufficiency": sufficiency,
+            "answer": result.answer,
+            "sufficiency": result.sufficiency,
             "retrieved_chunks": retrieved_chunks,
-            "analogy": analogy,
-            "realworld_context": realworld_context,
+            "analogy": result.analogy,
+            "realworld_context": result.realworld_context,
         }
 
     async def get_message(

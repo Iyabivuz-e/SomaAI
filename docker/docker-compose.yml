@@ -20,6 +20,7 @@ services:
       qdrant:
         condition: service_healthy
     restart: unless-stopped
+    container_name: somaai-app
     networks:
       - somaai-network
 
@@ -40,6 +41,8 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    container_name: somaai-postgres
+    hostname: postgres
     networks:
       - somaai-network
 

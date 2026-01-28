@@ -7,7 +7,7 @@ WORKDIR /app
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Copy dependency files first (better layer caching)
-COPY pyproject.toml uv.lock* ./
+COPY pyproject.toml uv.lock* alembic.ini ./
 
 # Create virtual environment and install dependencies
 RUN uv venv /app/.venv && \
@@ -39,6 +39,7 @@ RUN groupadd --gid 1000 somaai && \
 # Copy only the virtual environment from builder (no uv needed at runtime)
 COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app/src /app/src
+COPY --from=builder /app/alembic.ini /app/alembic.ini
 
 # Set ownership to non-root user
 RUN chown -R somaai:somaai /app
