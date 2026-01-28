@@ -153,4 +153,19 @@ MOCK_CHUNKS: list[dict[str, Any]] = [
             "both numerator and denominator by their greatest common divisor."
         ),
     },
+    {
+        "doc_id": "reb_math_s6_009",
+        "doc_title": "REB Mathematics S6 - Calculus",
+        "page_start": 30,
+        "page_end": 30,
+        "grade": "S6",
+        "subject": "mathematics",
+        "content": (
+            "In calculus, the derivative measures the instantaneous rate of change "
+            "of a function. For a function f(x), the derivative f'(x) represents "
+            "the slope of the tangent line at any point x. The fundamental theorem "
+            "of calculus links differentiation and integration, showing they are "
+            "inverse processes."
+        ),
+    },
 ]

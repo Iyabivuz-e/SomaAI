@@ -65,14 +65,17 @@ class MockRAGPipeline:
         )
 
         # 5. Generate optional enhancements
+        # Use simple source text for mock transparency (avoids recursive prompts)
+        enhancement_source = context_snippets[0] if context_snippets else inp.query
+
         analogy = None
         if inp.enable_analogy and answer:
-            analogy_prompt = build_analogy_prompt(inp, answer)
+            analogy_prompt = build_analogy_prompt(inp, enhancement_source)
             analogy = await self.llm.generate(analogy_prompt)
 
         realworld_context = None
         if inp.enable_realworld and answer:
-            realworld_prompt = build_realworld_prompt(inp, answer)
+            realworld_prompt = build_realworld_prompt(inp, enhancement_source)
             realworld_context = await self.llm.generate(realworld_prompt)
 
         return RAGResult(
