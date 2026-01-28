@@ -16,6 +16,7 @@ from somaai.contracts.chat import (
 from somaai.contracts.common import GradeLevel, Subject, Sufficiency, UserRole
 from somaai.db.models import Message, TeacherProfile
 from somaai.modules.chat.citations import CitationManager
+from somaai.modules.chat.memory import MemoryLoader
 from somaai.modules.rag.pipelines import BaseRAGPipeline
 from somaai.modules.rag.types import RAGInput
 from somaai.utils.ids import generate_id
@@ -35,6 +36,7 @@ class ChatService:
         self.db = db
         self.rag_pipeline = rag_pipeline
         self.citation_manager = CitationManager(db)
+        self.memory_loader = MemoryLoader(db)
 
     async def ask(
         self,
@@ -62,7 +64,15 @@ class ChatService:
             request_preferences=data.preferences,
             actor_id=actor_id,
         )
-        # 3. Run RAG pipeline (retrieve → generate)
+        # 3. Preparation: Fetch History
+        history_turns = await self.memory_loader.get_recent_turns(
+            session_id=data.session_id,
+            actor_id=actor_id,
+            limit=6,
+        )
+        history_text = self.memory_loader.format_history_for_prompt(history_turns)
+
+        # 4. Run RAG pipeline (retrieve → generate)
         rag_result = await self._run_rag_pipeline(
             question=question,
             grade=data.grade.value,
@@ -70,8 +80,9 @@ class ChatService:
             preferences=effective_preferences,
             user_role=data.user_role,
             teaching_classes=data.teaching_classes,
+            history=history_text,
         )
-        # 4. Generate message ID and timestamp
+        # 5. Generate message ID and timestamp
         message_id = generate_id()
         created_at = utc_now()
         # 5. Save message to DB
@@ -201,6 +212,7 @@ class ChatService:
         preferences: Preferences,
         user_role: UserRole,
         teaching_classes: list[GradeLevel] | None,
+        history: str = "",
     ) -> dict:
         """Run the RAG pipeline to generate an answer.
 
@@ -211,6 +223,7 @@ class ChatService:
             preferences: Effective preferences for generation
             user_role: User role (student/teacher)
             teaching_classes: Teaching classes for teachers
+            history: Formatted conversation history
 
         Returns:
             Dict with keys compatible with existing ChatService logic:
@@ -229,6 +242,7 @@ class ChatService:
             teaching_classes=teaching_classes,
             enable_analogy=preferences.enable_analogy or False,
             enable_realworld=preferences.enable_realworld or False,
+            history=history,
         )
 
         # Run pipeline

@@ -23,13 +23,17 @@ def build_answer_prompt(inp: RAGInput, context_snippets: list[str]) -> str:
         else "You are an educational assistant."
     )
 
+    history_section = ""
+    if hasattr(inp, "history") and inp.history:
+        history_section = f"\nConversation so far:\n{inp.history}\n"
+
     prompt = f"""You are SomaAI, an educational assistant for Rwanda's curriculum.
 
 {role_context}
 
 Grade Level: {inp.grade.value}
 Subject: {inp.subject.value}
-
+{history_section}
 Context from curriculum materials:
 {context}
 

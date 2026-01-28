@@ -18,6 +18,7 @@ class RAGInput:
     teaching_classes: list[GradeLevel] | None = None
     enable_analogy: bool = False
     enable_realworld: bool = False
+    history: str = ""
 
 
 @dataclass(frozen=True)
