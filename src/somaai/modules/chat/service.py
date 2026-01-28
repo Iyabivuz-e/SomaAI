@@ -1,10 +1,10 @@
 """Chat module service."""
 
+from datetime import datetime
 from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from somaai.contracts.chat import (
     ChatRequest,
@@ -14,7 +14,8 @@ from somaai.contracts.chat import (
     Preferences,
 )
 from somaai.contracts.common import GradeLevel, Subject, Sufficiency, UserRole
-from somaai.db.models import Chunk, Message, MessageCitation, TeacherProfile
+from somaai.db.models import Message, TeacherProfile
+from somaai.modules.chat.citations import CitationManager
 from somaai.modules.rag.pipelines import RAGPipeline
 from somaai.utils.ids import generate_id
 from somaai.utils.time import utc_now
@@ -30,6 +31,7 @@ class ChatService:
         """
         self.db = db
         self.rag_pipeline = RAGPipeline()
+        self.citation_manager = CitationManager(db)
 
     async def ask(
         self,
@@ -78,39 +80,29 @@ class ChatService:
             sufficiency=rag_result["sufficiency"],
             grade=data.grade.value,
             subject=data.subject.value,
-            analogy=rag_result.get("analogy")
-            if effective_preferences.enable_analogy
-            else None,
-            realworld_context=rag_result.get("realworld_context")
-            if effective_preferences.enable_realworld
-            else None,
+            analogy=(
+                rag_result.get("analogy")
+                if effective_preferences.enable_analogy
+                else None
+            ),
+            realworld_context=(
+                rag_result.get("realworld_context")
+                if effective_preferences.enable_realworld
+                else None
+            ),
             created_at=created_at,
         )
         self.db.add(message)
-        # 6. Save citations to DB
-        citations_response: list[CitationResponse] = []
-        for idx, chunk_data in enumerate(rag_result.get("retrieved_chunks", [])):
-            citation = MessageCitation(
-                id=generate_id(),
-                message_id=message_id,
-                chunk_id=chunk_data["chunk_id"],
-                relevance_score=chunk_data.get("score", 0.0),
-                order=idx,
-                snippet=chunk_data.get("snippet", ""),
-            )
-            self.db.add(citation)
-            # Build citation response
-            citations_response.append(
-                CitationResponse(
-                    doc_id=chunk_data["doc_id"],
-                    doc_title=chunk_data["doc_title"],
-                    page_start=chunk_data["page_start"],
-                    page_end=chunk_data["page_end"],
-                    chunk_preview=chunk_data.get("snippet", "")[:200],
-                    view_url=f"/api/v1/docs/{chunk_data['doc_id']}/view?page={chunk_data['page_start']}",
-                    relevance_score=chunk_data.get("score", 0.0),
-                )
-            )
+
+        # 6. Handle Citations via Manager
+        chunks = rag_result.get("retrieved_chunks", [])
+        citations_response = self.citation_manager.extract_from_rag(chunks)
+        await self.citation_manager.save_citations(
+            message_id=message_id, rag_chunks=chunks
+        )
+
+        await self.db.flush()
+
         # Commit happens automatically via session context manager in deps
         # 7. Return ChatResponse
         return ChatResponse(
@@ -118,12 +110,16 @@ class ChatService:
             answer=rag_result["answer"],
             sufficiency=Sufficiency(rag_result["sufficiency"]),
             citations=citations_response,
-            analogy=rag_result.get("analogy")
-            if effective_preferences.enable_analogy
-            else None,
-            realworld_context=rag_result.get("realworld_context")
-            if effective_preferences.enable_realworld
-            else None,
+            analogy=(
+                rag_result.get("analogy")
+                if effective_preferences.enable_analogy
+                else None
+            ),
+            realworld_context=(
+                rag_result.get("realworld_context")
+                if effective_preferences.enable_realworld
+                else None
+            ),
             created_at=created_at,
         )
 
@@ -254,30 +250,18 @@ class ChatService:
             MessageResponse or None if not found
         """
         result = await self.db.execute(
-            select(Message)
-            .options(
-                selectinload(Message.citations)
-                .selectinload(MessageCitation.chunk)
-                .selectinload(Chunk.document)
+            select(Message).where(
+                Message.id == message_id, Message.actor_id == actor_id
             )
-            .where(Message.id == message_id, Message.actor_id == actor_id)
         )
         message = result.scalar_one_or_none()
+
         if not message:
             return None
-        # Build citations response
-        citations = [
-            CitationResponse(
-                doc_id=cit.chunk.document.id,
-                doc_title=cit.chunk.document.title,
-                page_start=cit.chunk.page_start,
-                page_end=cit.chunk.page_end,
-                chunk_preview=cit.snippet[:200] if cit.snippet else "",
-                view_url=f"/api/v1/docs/{cit.chunk.document.id}/view?page={cit.chunk.page_start}",
-                relevance_score=cit.relevance_score,
-            )
-            for cit in sorted(message.citations, key=lambda c: c.order)
-        ]
+
+        # Delegate citation retrieval to manager
+        citations = await self.citation_manager.get_for_message(message_id)
+
         return MessageResponse(
             message_id=cast(str, message.id),
             session_id=cast(str | None, message.session_id),
@@ -288,7 +272,7 @@ class ChatService:
             grade=GradeLevel(cast(str, message.grade)),
             subject=Subject(cast(str, message.subject)),
             citations=citations,
-            created_at=utc_now(),
+            created_at=cast(datetime, message.created_at),
         )
 
     async def get_message_citations(
@@ -303,27 +287,13 @@ class ChatService:
         Returns:
             List of CitationResponse or None if message not found
         """
+        # First verify message ownership
         result = await self.db.execute(
-            select(Message)
-            .options(
-                selectinload(Message.citations)
-                .selectinload(MessageCitation.chunk)
-                .selectinload(Chunk.document)
+            select(Message).where(
+                Message.id == message_id, Message.actor_id == actor_id
             )
-            .where(Message.id == message_id, Message.actor_id == actor_id)
         )
-        message = result.scalar_one_or_none()
-        if not message:
+        if not result.scalar_one_or_none():
             return None
-        return [
-            CitationResponse(
-                doc_id=cit.chunk.document.id,
-                doc_title=cit.chunk.document.title,
-                page_start=cit.chunk.page_start,
-                page_end=cit.chunk.page_end,
-                chunk_preview=cit.snippet[:200] if cit.snippet else "",
-                view_url=f"/api/v1/docs/{cit.chunk.document.id}/view?page={cit.chunk.page_start}",
-                relevance_score=cit.relevance_score,
-            )
-            for cit in sorted(message.citations, key=lambda c: c.order)
-        ]
+
+        return await self.citation_manager.get_for_message(message_id)
