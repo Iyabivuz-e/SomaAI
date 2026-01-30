@@ -66,8 +66,6 @@ class FeedbackService:
         )
 
         self.session.add(feedback)
-        await self.session.commit()
-        await self.session.refresh(feedback)
 
         return self._to_response(feedback, request.user_role)
 
@@ -102,7 +100,14 @@ class FeedbackService:
         feedback = await self._get_feedback_by_message(message_id)
         if not feedback:
             return None
-        user_role = UserRole(cast(str, feedback.user_role))
+
+        raw_role = feedback.user_role
+        if raw_role is None:
+            return None
+        try:
+            user_role = UserRole(str(raw_role))
+        except ValueError:
+            return None
         return self._to_response(feedback, user_role)
 
     @staticmethod

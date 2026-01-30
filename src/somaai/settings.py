@@ -1,8 +1,10 @@
 """Application settings.
 
 Centralized configuration loaded from environment variables.
+Uses Decimal for high-precision numeric configuration.
 """
 
+from decimal import Decimal
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -26,7 +28,9 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./somaai.db"
 
     # Redis / Cache
-    redis_url: str = "redis://localhost:6379/0"
+    redis_url: str = "redis://localhost:6379/0"  # General
+    redis_jobs_url: str = "redis://localhost:6379/1"  # Job queue
+    redis_cache_url: str = "redis://localhost:6379/2"  # RAG cache
     redis_password: str | None = None
 
     # Vector Database (Qdrant)
@@ -44,10 +48,13 @@ class Settings(BaseSettings):
     queue_backend: str = "redis"  # redis | sync
 
     # Cache TTLs (seconds)
-    cache_query_ttl: int = 86400
-    cache_embedding_ttl: int = 604800
+    cache_query_ttl: int = 86400  # Response cache: 24 hours
+    cache_embedding_ttl: int = 3600  # Embedding cache: 1 hour
     cache_retrieval_ttl: int = 3600
     cache_session_ttl: int = 3600
+    
+    # Cache quality thresholds
+    response_cache_min_confidence: Decimal = Decimal("0.7")
 
     # Semantic Cache
     # cache_semantic_enabled: bool = True
@@ -63,6 +70,9 @@ class Settings(BaseSettings):
     huggingface_model: str = ""
     openai_api_key: str | None = None
     openai_model: str = ""
+    
+    # Security
+    require_api_key: bool = False  # Enable in production
 
 
 settings = Settings()

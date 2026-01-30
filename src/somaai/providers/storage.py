@@ -89,4 +89,17 @@ def get_storage() -> StorageBackend:
     Raises:
         ValueError: If STORAGE_BACKEND is not recognized
     """
-    pass
+    from somaai.settings import settings
+
+    backend = settings.storage_backend.lower()
+
+    if backend == "local":
+        from somaai.providers.storage_local import LocalStorage
+        return LocalStorage()
+
+    if backend == "gdrive":
+        raise NotImplementedError(
+            "GDrive storage not implemented yet. Use STORAGE_BACKEND=local"
+        )
+
+    raise ValueError(f"Unknown storage backend: {backend}")

@@ -1,95 +1,168 @@
-"""Prompt templates for RAG generation."""
+"""RAG prompts for educational content.
 
-from somaai.modules.rag.types import RAGInput
+Provides grade-appropriate prompts for students and teachers,
+with support for analogies, real-world examples, and citations.
+"""
 
+# System prompt for all RAG interactions
+SYSTEM_PROMPT = """You are SomaAI, an educational assistant for Rwandan students and teachers.
+You help with curriculum-aligned learning using official REB (Rwanda Education Board) materials.
 
-def build_answer_prompt(inp: RAGInput, context_snippets: list[str]) -> str:
-    """Build prompt for answer generation.
+CRITICAL RULES:
+1. Answer ONLY using the provided curriculum content
+2. If information is NOT in the provided content, say "I don't have this information in the curriculum"
+3. NEVER make up facts or use external knowledge
+4. Always cite page numbers for every fact
+5. Be accurate, helpful, and appropriate for the grade level"""
 
-    Args:
-        inp: RAG input with query and context
-        context_snippets: Retrieved text snippets to use as context
+# Student mode - simple, grade-appropriate explanations with JSON output
+STUDENT_PROMPT = """You are a helpful tutor for Rwandan students at the {grade} level.
 
-    Returns:
-        Formatted prompt for LLM
-    """
-    context = "\n\n".join(
-        f"[Source {i + 1}]: {snippet}" for i, snippet in enumerate(context_snippets)
-    )
-
-    role_context = (
-        f"You are answering for a {inp.user_role.value}."
-        if inp.user_role
-        else "You are an educational assistant."
-    )
-
-    history_section = ""
-    if hasattr(inp, "history") and inp.history:
-        history_section = f"\nConversation so far:\n{inp.history}\n"
-
-    prompt = f"""You are SomaAI, an educational assistant for Rwanda's curriculum.
-
-{role_context}
-
-Grade Level: {inp.grade.value}
-Subject: {inp.subject.value}
-{history_section}
-Context from curriculum materials:
+CURRICULUM CONTENT:
 {context}
 
-Student Question: {inp.query}
+{history}
 
-Please provide a clear, accurate answer based on the context above.
-Keep it appropriate for {inp.grade.value} level.
-If the context doesn't contain enough information, say so honestly.
+QUESTION: {question}
 
-Answer:"""
+Respond in this exact JSON format:
+```json
+{{
+  "answer": "Your clear, {grade}-appropriate answer here",
+  "is_grounded": true,
+  "confidence": 0.85,
+  "citations": [
+    {{"page_number": 1, "quote": "relevant quote from the content"}}
+  ],
+  "reasoning": "Brief explanation of your answer"
+}}
+```
 
-    return prompt
+RULES:
+- Set is_grounded to false if you cannot find the answer in the curriculum
+- Include at least one citation for every fact
+- Use simple language for {grade} students
+- If information is missing, set confidence to 0 and explain in reasoning"""
+
+# Teacher mode - detailed with pedagogical support
+TEACHER_PROMPT = """You are an assistant for Rwandan teachers preparing lessons and materials.
+Provide detailed, curriculum-aligned explanations with teaching support.
+
+CURRICULUM CONTENT:
+{context}
+
+{history}
+
+TEACHER'S QUESTION: {question}
+
+Provide a comprehensive response including:
+
+1. **Direct Answer**: Address the question with curriculum-aligned information
+
+{analogy_section}
+
+{realworld_section}
+
+3. **Teaching Tips**: Suggestions for explaining this concept to students
+
+4. **Common Misconceptions**: What students often misunderstand about this topic
+
+Always cite page numbers and source documents when referencing specific content."""
+
+# Analogy section (included when enabled)
+ANALOGY_SECTION = """2. **Analogy**: Create an analogy that makes this concept relatable to Rwandan students
+   - Use familiar examples from Rwandan daily life, culture, or environment
+   - Keep it simple and memorable"""
+
+# Real-world section (included when enabled)
+REALWORLD_SECTION = """2. **Real-World Application**: Explain how this applies in real life
+   - Use examples relevant to Rwanda (local businesses, agriculture, technology)
+   - Connect to career opportunities in Rwanda"""
+
+# Quiz generation prompt
+QUIZ_GENERATION_PROMPT = """Generate {num_questions} quiz questions for {grade} students in {subject}.
+Difficulty level: {difficulty}
+
+Use ONLY the following curriculum content to create questions:
+{context}
+
+Format your response as a numbered list with the following structure:
+
+Q1: [Question text]
+A1: [Answer] (Page {page_number})
+
+Q2: [Question text]
+A2: [Answer] (Page {page_number})
+
+Guidelines:
+- Questions should test understanding, not just memorization
+- Include a mix of question types (multiple choice, short answer, true/false)
+- Answers must be directly supported by the curriculum content
+- Always cite the source page for each answer
+- Difficulty should match {difficulty}: 
+  - easy: Basic recall and simple concepts
+  - medium: Application and understanding
+  - hard: Analysis and synthesis"""
+
+# Context formatting template
+CONTEXT_TEMPLATE = """[Source: {title}, Page {page_start}-{page_end}]
+{content}
+---"""
 
 
-def build_analogy_prompt(inp: RAGInput, answer: str) -> str:
-    """Build prompt for analogy generation.
+def format_prompt(
+    template: str,
+    question: str,
+    context: str,
+    grade: str,
+    include_analogy: bool = False,
+    include_realworld: bool = False,
+    history: str = "",
+    **kwargs,
+) -> str:
+    """Format a prompt template with provided values.
 
     Args:
-        inp: RAG input with query context
-        answer: The main answer to create analogy for
+        template: Prompt template (STUDENT_PROMPT or TEACHER_PROMPT)
+        question: User's question
+        context: Formatted context from retrieval
+        grade: Grade level
+        include_analogy: Include analogy section
+        include_realworld: Include real-world section
+        history: Previous chat history
+        **kwargs: Additional template variables
 
     Returns:
-        Formatted prompt for analogy generation
+        Formatted prompt string
     """
-    prompt = f"""Given this educational answer:
-"{answer}"
+    analogy_section = ANALOGY_SECTION if include_analogy else ""
+    realworld_section = REALWORLD_SECTION if include_realworld else ""
+    
+    # Format history section if present
+    history_section = ""
+    if history:
+        history_section = f"CONVERSATION HISTORY:\n{history}\n"
 
-For a {inp.grade.value} {inp.subject.value} student, create a simple analogy
-or comparison that helps explain this concept in everyday terms.
+    return template.format(
+        question=question,
+        context=context,
+        grade=grade,
+        analogy_section=analogy_section,
+        realworld_section=realworld_section,
+        history=history_section,
+        **kwargs,
+    )
 
-Keep it brief (2-3 sentences) and relatable to Rwandan students.
 
-Analogy:"""
-
-    return prompt
-
-
-def build_realworld_prompt(inp: RAGInput, answer: str) -> str:
-    """Build prompt for real-world application.
+def get_prompt_for_role(user_role: str) -> str:
+    """Get appropriate prompt template based on user role.
 
     Args:
-        inp: RAG input with query context
-        answer: The main answer to create real-world context for
+        user_role: 'student' or 'teacher'
 
     Returns:
-        Formatted prompt for real-world application
+        Prompt template string
     """
-    prompt = f"""Given this educational concept:
-"{answer}"
-
-Explain a practical real-world application of this concept that {inp.grade.value}
-students in Rwanda would find relevant.
-
-Focus on examples from daily life, local context, or future careers.
-Keep it brief (2-3 sentences).
-
-Real-world application:"""
-
-    return prompt
+    if user_role == "teacher":
+        return TEACHER_PROMPT
+    return STUDENT_PROMPT

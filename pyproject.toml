@@ -58,8 +58,32 @@ pdf = [
     "reportlab>=4.0.0",
     "python-docx>=1.0.0",
 ]
+rag = [
+    # LangChain ecosystem
+    "langchain>=0.3.0",
+    "langchain-community>=0.3.0",
+    "langchain-openai>=0.2.0",
+    "langchain-qdrant>=0.2.0",
+    # Document processing
+    "pypdf>=4.0.0",
+    "docx2txt>=0.8",
+    # TODO (Post-MVP): Uncomment for cross-encoder reranking
+    # Requires PyTorch (~873MB) + CUDA libs (~2.6GB) = ~3.5GB total
+    # "sentence-transformers>=3.0.0",
+]
+tasks = [
+    # Async task queue
+    "arq>=0.26.0",
+]
+scale = [
+    # Scalability improvements
+    "aioitertools>=0.12.0",      # Async batch processing
+    "prometheus-fastapi-instrumentator>=7.0.0",  # Metrics
+    "slowapi>=0.1.9",            # Rate limiting
+    "aiofiles>=24.0.0",          # Async file streaming
+]
 all = [
-    "somaai[cache,vectordb,pdf]",
+    "somaai[cache,vectordb,pdf,rag,tasks,scale]",
 ]
 
 [project.urls]

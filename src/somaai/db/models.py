@@ -203,7 +203,6 @@ class Feedback(Base):
         String(36),
         ForeignKey("messages.id", ondelete="CASCADE"),
         nullable=False,
-        # index=True,  <-- Removed to avoid conflict with explicit unique index below
         # unique=True, This will be unique after adding the authentication
     )
     # Actor ID for MVP to know who gave the feedback
