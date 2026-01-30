@@ -11,6 +11,42 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://somaai:somaai@postgres:5432/somaai
       - REDIS_URL=redis://redis:6379/0
+      - REDIS_JOBS_URL=redis://redis:6379/1
+      - REDIS_CACHE_URL=redis://redis:6379/2
+      - QDRANT_URL=http://qdrant:6333
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - somaai-network
+
+  # Background Worker
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: python -m somaai.jobs.worker
+    # deploy:
+    #   replicas: 3
+    #   resources:
+    #     limits:
+    #       cpus: '2'
+    #       memory: 4G
+    #     reservations:
+    #       cpus: '0.5'
+    #       memory: 1G
+    env_file:
+      - ../.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://somaai:somaai@postgres:5432/somaai
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_JOBS_URL=redis://redis:6379/1
+      - REDIS_CACHE_URL=redis://redis:6379/2
       - QDRANT_URL=http://qdrant:6333
     depends_on:
       postgres:

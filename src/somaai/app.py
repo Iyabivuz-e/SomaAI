@@ -38,4 +38,11 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(api_router, prefix="/api")
 
+    # Add Prometheus metrics instrumentation
+    try:
+        from prometheus_fastapi_instrumentator import Instrumentator
+        Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+    except ImportError:
+        pass  # Optional dependency
+
     return app
