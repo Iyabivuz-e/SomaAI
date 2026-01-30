@@ -73,6 +73,7 @@ class LLMGenerator(BaseGenerator):
         include_analogy: bool = False,
         include_realworld: bool = False,
         retrieved_docs: list[dict] | None = None,
+        history: str = "",
     ) -> dict:
         """Generate response with structured output.
 
@@ -84,6 +85,7 @@ class LLMGenerator(BaseGenerator):
             include_analogy: Include analogy
             include_realworld: Include real-world examples
             retrieved_docs: Original docs for citation validation
+            history: Previous chat history
 
         Returns:
             Dict with answer, sufficiency, citations, validation status
@@ -99,6 +101,7 @@ class LLMGenerator(BaseGenerator):
             grade=grade,
             include_analogy=include_analogy,
             include_realworld=include_realworld,
+            history=history,
         )
 
         # Add system prompt
@@ -213,6 +216,7 @@ class CombinedGenerator(BaseGenerator):
         include_analogy: bool = False,
         include_realworld: bool = False,
         retrieved_docs: list[dict] | None = None,
+        history: str = "",
     ) -> dict:
         """Generate combined response.
 
@@ -224,6 +228,7 @@ class CombinedGenerator(BaseGenerator):
             include_analogy: Include analogy
             include_realworld: Include real-world
             retrieved_docs: Original docs for citation validation
+            history: Previous chat history
 
         Returns:
             Complete response dict
@@ -237,4 +242,5 @@ class CombinedGenerator(BaseGenerator):
             include_analogy=include_analogy,
             include_realworld=include_realworld,
             retrieved_docs=retrieved_docs,
+            history=history,
         )

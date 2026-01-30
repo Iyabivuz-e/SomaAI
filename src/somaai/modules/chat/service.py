@@ -15,10 +15,9 @@ from somaai.contracts.chat import (
 )
 from somaai.contracts.common import GradeLevel, Subject, Sufficiency, UserRole
 from somaai.db.models import Message, TeacherProfile
-from somaai.modules.chat.citations import CitationManager
+from somaai.modules.chat.citations import get_citation_extractor
 from somaai.modules.chat.memory import MemoryLoader
 from somaai.modules.rag.pipelines import BaseRAGPipeline
-from somaai.modules.rag.types import RAGInput
 from somaai.utils.ids import generate_id
 from somaai.utils.time import utc_now
 
@@ -35,7 +34,7 @@ class ChatService:
         """
         self.db = db
         self.rag_pipeline = rag_pipeline
-        self.citation_manager = CitationManager(db)
+        self.citation_manager = get_citation_extractor()
         self.memory_loader = MemoryLoader(db)
 
     async def ask(
@@ -45,25 +44,24 @@ class ChatService:
     ) -> ChatResponse:
         """Process a chat message and generate AI response.
         Flow:
-        1. Normalize question (strip whitespace)
-        2. Determine effective preferences (teacher defaults from profile)
-        3. Run RAG pipeline (retrieve → generate)
-        4. Save to DB (message + citations)
-        5. Return ChatResponse
-        Args:
-            data: Chat request with question, grade, subject, preferences
-            actor_id: Actor identifier (user or anonymous)
-        Returns:
-            ChatResponse with answer, citations, and optional enhancements
+        1. Normalize question
+        2. Determine preferences
+        3. Fetch History
+        4. Run RAG pipeline
+        5. Save message
+        6. Save citations
+        7. Return ChatResponse
         """
         # 1. Normalize question
         question = data.question.strip()
+
         # 2. Determine effective preferences
         effective_preferences = await self._resolve_preferences(
             user_role=data.user_role,
             request_preferences=data.preferences,
             actor_id=actor_id,
         )
+
         # 3. Preparation: Fetch History
         history_turns: list[dict[str, str]] = []
         if data.session_id:
@@ -74,20 +72,27 @@ class ChatService:
             )
         history_text = self.memory_loader.format_history_for_prompt(history_turns)
 
-        # 4. Run RAG pipeline (retrieve → generate)
-        rag_result = await self._run_rag_pipeline(
-            question=question,
+        # 4. Run RAG pipeline (using new signature)
+        pipeline_preferences = {
+            "enable_analogy": effective_preferences.enable_analogy,
+            "enable_realworld": effective_preferences.enable_realworld,
+        }
+        
+        rag_result = await self.rag_pipeline.run(
+            query=question,
             grade=data.grade.value,
             subject=data.subject.value,
-            preferences=effective_preferences,
-            user_role=data.user_role,
-            teaching_classes=data.teaching_classes,
+            user_role=data.user_role.value,
+            preferences=pipeline_preferences,
+            session_id=data.session_id,
             history=history_text,
         )
+
         # 5. Generate message ID and timestamp
         message_id = generate_id()
         created_at = utc_now()
-        # 5. Save message to DB
+
+        # 6. Save message to DB
         message = Message(
             id=message_id,
             session_id=data.session_id,
@@ -95,49 +100,38 @@ class ChatService:
             user_role=data.user_role.value,
             question=question,
             answer=rag_result["answer"],
-            sufficiency=rag_result["sufficiency"],
+            sufficiency=rag_result.get("sufficiency", "sufficient"),
             grade=data.grade.value,
             subject=data.subject.value,
-            analogy=(
-                rag_result.get("analogy")
-                if effective_preferences.enable_analogy
-                else None
-            ),
-            realworld_context=(
-                rag_result.get("realworld_context")
-                if effective_preferences.enable_realworld
-                else None
-            ),
+            analogy=rag_result.get("analogy"),
+            realworld_context=rag_result.get("realworld_context"),
             created_at=created_at,
         )
         self.db.add(message)
 
-        # 6. Handle Citations via Manager
-        chunks = rag_result.get("retrieved_chunks", [])
-        citations_response = self.citation_manager.extract_from_rag(chunks)
+        # 7. Handle Citations
+        # Reconstruct CitationResponse objects from dicts for the manager
+        citations_dicts = rag_result.get("citations", [])
+        citations_objects = [CitationResponse(**c) for c in citations_dicts]
+        chunks_map = rag_result.get("chunks_map", {})
+
         await self.citation_manager.save_citations(
-            message_id=message_id, rag_chunks=chunks
+            db=self.db,
+            message_id=message_id,
+            citations=citations_objects,
+            chunks_map=chunks_map
         )
 
         await self.db.flush()
 
-        # Commit happens automatically via session context manager in deps
-        # 7. Return ChatResponse
+        # 8. Return ChatResponse
         return ChatResponse(
             message_id=message_id,
             answer=rag_result["answer"],
-            sufficiency=Sufficiency(rag_result["sufficiency"]),
-            citations=citations_response,
-            analogy=(
-                rag_result.get("analogy")
-                if effective_preferences.enable_analogy
-                else None
-            ),
-            realworld_context=(
-                rag_result.get("realworld_context")
-                if effective_preferences.enable_realworld
-                else None
-            ),
+            sufficiency=Sufficiency(rag_result.get("sufficiency", "sufficient")),
+            citations=citations_objects,
+            analogy=rag_result.get("analogy"),
+            realworld_context=rag_result.get("realworld_context"),
             created_at=created_at,
         )
 
@@ -147,26 +141,12 @@ class ChatService:
         request_preferences: Preferences,
         actor_id: str,
     ) -> Preferences:
-        """Resolve effective preferences based on user role and profile.
-        For teachers:
-        - Default analogy+realworld to True unless request explicitly disables
-        - OR use teacher profile settings if available
-        For students:
-        - Use request preferences as-is
-        Args:
-            user_role: Student or Teacher
-            request_preferences: Preferences from the request
-            actor_id: Actor identifier for profile lookup
-        Returns:
-            Resolved Preferences object
-        """
+        """Resolve effective preferences based on user role and profile."""
         if user_role == UserRole.STUDENT:
-            # Students use request preferences as-is
             return request_preferences
-        # Teacher: check profile for defaults
+            
         profile = await self._get_teacher_profile(actor_id)
         if profile:
-            # Use profile defaults, but request can override to disable
             enable_analogy = (
                 request_preferences.enable_analogy
                 if request_preferences.enable_analogy is not None
@@ -178,7 +158,6 @@ class ChatService:
                 else cast(bool, profile.realworld_enabled)
             )
         else:
-            # No profile: default to True for teachers unless request disables
             enable_analogy = (
                 request_preferences.enable_analogy
                 if request_preferences.enable_analogy is not None
@@ -195,95 +174,18 @@ class ChatService:
         )
 
     async def _get_teacher_profile(self, actor_id: str) -> TeacherProfile | None:
-        """Get teacher profile from database.
-        Args:
-            actor_id: Teacher's actor ID
-        Returns:
-            TeacherProfile or None if not found
-        """
+        """Get teacher profile from database."""
         result = await self.db.execute(
             select(TeacherProfile).where(TeacherProfile.teacher_id == actor_id)
         )
         return result.scalar_one_or_none()
-
-    async def _run_rag_pipeline(
-        self,
-        question: str,
-        grade: str,
-        subject: str,
-        preferences: Preferences,
-        user_role: UserRole,
-        teaching_classes: list[GradeLevel] | None,
-        history: str = "",
-    ) -> dict:
-        """Run the RAG pipeline to generate an answer.
-
-        Args:
-            question: Normalized user question
-            grade: Grade level for filtering
-            subject: Subject for filtering
-            preferences: Effective preferences for generation
-            user_role: User role (student/teacher)
-            teaching_classes: Teaching classes for teachers
-            history: Formatted conversation history
-
-        Returns:
-            Dict with keys compatible with existing ChatService logic:
-            - answer: Generated response text
-            - sufficiency: "sufficient" or "insufficient"
-            - retrieved_chunks: List of chunk dicts for citations
-            - analogy: Optional analogy text
-            - realworld_context: Optional real-world context text
-        """
-        # Build RAG input
-        rag_input = RAGInput(
-            query=question,
-            grade=GradeLevel(grade),
-            subject=Subject(subject),
-            user_role=user_role,
-            teaching_classes=teaching_classes,
-            enable_analogy=preferences.enable_analogy or False,
-            enable_realworld=preferences.enable_realworld or False,
-            history=history,
-        )
-
-        # Run pipeline
-        result = await self.rag_pipeline.run(rag_input)
-
-        # Convert RetrievedChunk to dict for CitationManager
-        retrieved_chunks = [
-            {
-                "chunk_id": chunk.chunk_id,
-                "doc_id": chunk.doc_id,
-                "doc_title": chunk.doc_title,
-                "page_start": chunk.page_start,
-                "page_end": chunk.page_end,
-                "snippet": chunk.snippet,
-                "score": chunk.score,
-            }
-            for chunk in result.retrieved_chunks
-        ]
-
-        return {
-            "answer": result.answer,
-            "sufficiency": result.sufficiency,
-            "retrieved_chunks": retrieved_chunks,
-            "analogy": result.analogy,
-            "realworld_context": result.realworld_context,
-        }
 
     async def get_message(
         self,
         message_id: str,
         actor_id: str,
     ) -> MessageResponse | None:
-        """Get a specific message by ID.
-        Args:
-            message_id: Message identifier
-            actor_id: Actor ID for access control
-        Returns:
-            MessageResponse or None if not found
-        """
+        """Get a specific message by ID."""
         result = await self.db.execute(
             select(Message).where(
                 Message.id == message_id, Message.actor_id == actor_id
@@ -295,7 +197,7 @@ class ChatService:
             return None
 
         # Delegate citation retrieval to manager
-        citations = await self.citation_manager.get_for_message(message_id)
+        citations = await self.citation_manager.get_message_citations(self.db, message_id)
 
         return MessageResponse(
             message_id=cast(str, message.id),
@@ -315,13 +217,7 @@ class ChatService:
         message_id: str,
         actor_id: str,
     ) -> list[CitationResponse] | None:
-        """Get citations for a message.
-        Args:
-            message_id: Message identifier
-            actor_id: Actor ID for access control
-        Returns:
-            List of CitationResponse or None if message not found
-        """
+        """Get citations for a message."""
         # First verify message ownership
         result = await self.db.execute(
             select(Message).where(
@@ -331,4 +227,4 @@ class ChatService:
         if not result.scalar_one_or_none():
             return None
 
-        return await self.citation_manager.get_for_message(message_id)
+        return await self.citation_manager.get_message_citations(self.db, message_id)

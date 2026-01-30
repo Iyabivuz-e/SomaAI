@@ -128,6 +128,10 @@ async def get_job_status(job_id: str) -> JobResponse | None:
         progress_pct=job.progress_pct or 0,
         result_id=job.result_id,
         error=job.error,
+        created_at=job.created_at,
+        started_at=job.started_at,
+        completed_at=job.completed_at,
+        metadata=None, # job.metadata causes validation error || later, use the job.metadata
     )
 
 

@@ -46,7 +46,7 @@ class IngestPipeline:
     def splitter(self):
         """Get text splitter."""
         if self._splitter is None:
-            from langchain.text_splitter import RecursiveCharacterTextSplitter
+            from langchain_text_splitters import RecursiveCharacterTextSplitter
             self._splitter = RecursiveCharacterTextSplitter(
                 chunk_size=1000,
                 chunk_overlap=200,
@@ -223,31 +223,25 @@ class IngestPipeline:
             self._progress(on_progress, "Storage complete", 95)
 
             # Phase 5: Save chunks to PostgreSQL for citation FK (95-98%)
-            self._progress(on_progress, "Saving chunk metadata", 95)
-            try:
-                from somaai.db.session import get_async_session
-                from somaai.db.crud import create_chunks
-                
-                chunk_records = [
-                    {
-                        "id": c.metadata["chunk_id"],
-                        "document_id": doc_id,
-                        "content": c.page_content[:5000],  # Limit for DB storage
-                        "page_start": c.metadata["page_start"],
-                        "page_end": c.metadata["page_end"],
-                        "chunk_index": c.metadata["chunk_index"],
-                    }
-                    for c in chunks
-                ]
-                
-                async with get_async_session() as db:
-                    await create_chunks(db, chunk_records)
-                
-                self._progress(on_progress, "Chunk metadata saved", 98)
-            except Exception as e:
-                # Log but don't fail ingestion if chunk persistence fails
-                import logging
-                logging.warning(f"Chunk persistence to PostgreSQL failed: {e}")
+            from somaai.db.session import async_session_maker
+            from somaai.db.crud import create_chunks
+            
+            chunk_records = [
+                {
+                    "id": c.metadata["chunk_id"],
+                    "document_id": doc_id,
+                    "content": c.page_content[:5000],  # Limit for DB storage
+                    "page_start": c.metadata["page_start"],
+                    "page_end": c.metadata["page_end"],
+                    "chunk_index": c.metadata["chunk_index"],
+                }
+                for c in chunks
+            ]
+            
+            async with async_session_maker() as db:
+                await create_chunks(db, chunk_records)
+            
+            self._progress(on_progress, "Chunk metadata saved", 98)
 
             # Phase 6: Finalize (98-100%)
             self._progress(on_progress, "Finalizing", 98)
