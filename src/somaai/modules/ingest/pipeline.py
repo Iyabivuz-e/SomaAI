@@ -5,8 +5,9 @@ Processes curriculum documents (PDF, DOCX) into searchable chunks.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from somaai.utils.ids import generate_id
 
@@ -186,30 +187,30 @@ class IngestPipeline:
 
             # Phase 4: Store in Qdrant with batching (50-95%)
             self._progress(on_progress, "Storing in vector database", 50)
-            
+
             # Batch processing for efficient embedding generation
             BATCH_SIZE = 50
             total_batches = (len(chunks) + BATCH_SIZE - 1) // BATCH_SIZE
-            
+
             try:
                 import aioitertools
-                
+
                 batch_idx = 0
                 async for batch in aioitertools.batched(chunks, BATCH_SIZE):
                     batch_list = list(batch)
                     texts = [c.page_content for c in batch_list]
                     metadata_list = [c.metadata for c in batch_list]
-                    
+
                     await self.store.add(
                         texts=texts,
                         embeddings=[],
                         metadata=metadata_list,
                     )
-                    
+
                     batch_idx += 1
                     progress = 50 + int(45 * batch_idx / total_batches)
                     self._progress(on_progress, f"Batch {batch_idx}/{total_batches}", progress)
-                    
+
             except ImportError:
                 # Fallback to sequential if aioitertools not installed
                 texts = [c.page_content for c in chunks]
@@ -219,13 +220,13 @@ class IngestPipeline:
                     embeddings=[],
                     metadata=metadata_list,
                 )
-            
+
             self._progress(on_progress, "Storage complete", 95)
 
             # Phase 5: Save chunks to PostgreSQL for citation FK (95-98%)
-            from somaai.db.session import async_session_maker
             from somaai.db.crud import create_chunks
-            
+            from somaai.db.session import async_session_maker
+
             chunk_records = [
                 {
                     "id": c.metadata["chunk_id"],
@@ -237,10 +238,10 @@ class IngestPipeline:
                 }
                 for c in chunks
             ]
-            
+
             async with async_session_maker() as db:
                 await create_chunks(db, chunk_records)
-            
+
             self._progress(on_progress, "Chunk metadata saved", 98)
 
             # Phase 6: Finalize (98-100%)

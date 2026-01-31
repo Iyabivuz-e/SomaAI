@@ -12,25 +12,30 @@ from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Protocol
 
+from somaai.contracts.common import GradeLevel, Subject, UserRole
 from somaai.modules.rag.generator import CombinedGenerator
 from somaai.modules.rag.mock_retriever import MockRetriever
-from somaai.modules.rag.prompts import format_prompt, get_prompt_for_role
 from somaai.modules.rag.reranker import get_reranker
 from somaai.modules.rag.retriever import Retriever
 from somaai.modules.rag.types import RAGInput
-from somaai.contracts.common import GradeLevel, Subject, UserRole
 from somaai.utils.ids import generate_id
 from somaai.utils.observability import log_rag_request
 from somaai.utils.security import sanitize_query
 
 if TYPE_CHECKING:
-    from somaai.settings import Settings
     from somaai.providers.llm import LLMClient
+    from somaai.settings import Settings
+
+import logging
+import json
+from somaai.modules.rag.prompts import CONDENSE_QUESTION_PROMPT
+
+logger = logging.getLogger(__name__)
 
 
 class BaseRAGPipeline(Protocol):
     """Protocol for RAG pipeline implementations."""
-    
+
     async def run(
         self,
         query: str,
@@ -119,9 +124,22 @@ class RAGPipeline:
             # 1. Sanitize input for security
             clean_query = sanitize_query(query)
 
+            # Debug: Log context
+            logger.info(f"RAG Processing - Original Query: {clean_query}")
+            if history:
+                logger.info(f"RAG Context - History present ({len(history)} chars)")
+            else:
+                logger.info("RAG Context - No history provided")
+
+            # 1b. Condense query if history exists
+            search_query = clean_query
+            if history:
+                search_query = await self._condense_query(clean_query, history)
+                logger.info(f"RAG Rewritten Query: {search_query}")
+
             # 2. Retrieve with fallback strategy
             docs = await self.retriever.retrieve_with_fallback(
-                query=clean_query,
+                query=search_query,
                 grade=grade,
                 subject=subject,
                 top_k=20,
@@ -133,7 +151,7 @@ class RAGPipeline:
             ranked_docs = []
             if docs:
                 ranked_docs = await self.reranker.rerank(
-                    query=clean_query,
+                    query=search_query,
                     documents=docs,
                     top_k=5,
                     min_score=Decimal("0.1"),
@@ -141,11 +159,14 @@ class RAGPipeline:
 
             # 4. Check if we have sufficient context
             if not ranked_docs:
-                return self._insufficient_context_response(query, grade, subject)
+                logger.info("No documents found. Proceeding to generator for potential chit-chat handling.")
+                # We do NOT return insufficient_context here anymore.
+                # We let the Generator handle it (e.g. for greetings).
+                # return self._insufficient_context_response(query, grade, subject)
 
             # 5. Generate response
             result = await self.generator.generate(
-                query=clean_query,
+                query=search_query,
                 context=[doc.get("content", "") for doc in ranked_docs],
                 grade=grade,
                 user_role=user_role,
@@ -204,6 +225,45 @@ class RAGPipeline:
                 error=str(e),
             )
             raise
+
+    async def _condense_query(self, query: str, history: str) -> str:
+        """Rewrite query to be standalone using history.
+
+        Args:
+            query: Follow-up question
+            history: Conversation history
+
+        Returns:
+            Standalone query or original if rewriting fails
+        """
+        try:
+            from somaai.providers.llm import get_llm
+            llm = get_llm(self.settings)
+
+            prompt = CONDENSE_QUESTION_PROMPT.format(
+                chat_history=history,
+                question=query
+            )
+
+            response_json = await llm.generate(prompt)
+            
+            # Helper to extract JSON if surrounded by markdown
+            cleaned_json = response_json
+            if "```json" in cleaned_json:
+                import re
+                match = re.search(r"```json\s*(.*?)\s*```", cleaned_json, re.DOTALL)
+                if match:
+                    cleaned_json = match.group(1)
+            elif "```" in cleaned_json:
+                 cleaned_json = cleaned_json.strip("`")
+
+            data = json.loads(cleaned_json)
+            rewritten = data.get("standalone_question", query)
+            return rewritten
+
+        except Exception as e:
+            logger.warning(f"Query rewriting failed: {e}. Using original query.")
+            return query
 
     def _insufficient_context_response(
         self,
@@ -303,13 +363,18 @@ class RAGPipeline:
 
 class MockRAGPipeline:
     """Mock RAG pipeline using in-memory chunks and LLM.
-    
+
     Now hybridized: It allows using the REAL Retriever (Qdrant) if available,
     falling back to mock data if no documents are found.
     This enables testing the ingestion pipeline end-to-end without a paid LLM.
     """
 
-    def __init__(self, llm: LLMClient | None = None, top_k: int = 3, settings: Settings | None = None):
+    def __init__(
+        self,
+        llm: LLMClient | None = None,
+        top_k: int = 3,
+        settings: Settings | None = None,
+    ):
         """Initialize mock pipeline.
 
         Args:
@@ -341,13 +406,13 @@ class MockRAGPipeline:
         include_realworld = preferences.get("enable_realworld", False)
 
         docs_dicts = []
-        
+
         # 1. Try Real Retrieval first (Qdrant)
         try:
             real_docs = await self.real_retriever.retrieve_with_fallback(
-                query=query, 
-                grade=grade, 
-                subject=subject, 
+                query=query,
+                grade=grade,
+                subject=subject,
                 top_k=5
             )
             if real_docs:
@@ -362,7 +427,7 @@ class MockRAGPipeline:
                     "score": d.get("score", 0),
                     "metadata": d["metadata"]
                 } for d in real_docs]
-        except Exception as e:
+        except Exception:
             # Ignore real retriever errors in Mock mode
             pass
 
@@ -370,9 +435,21 @@ class MockRAGPipeline:
         if not docs_dicts:
             rag_input = RAGInput(
                 query=query,
-                grade=GradeLevel(grade) if grade in GradeLevel._value2member_map_ else GradeLevel.S1,
-                subject=Subject(subject) if subject in Subject._value2member_map_ else Subject.GENERAL,
-                user_role=UserRole(user_role) if user_role in UserRole._value2member_map_ else UserRole.STUDENT,
+                grade=(
+                    GradeLevel(grade)
+                    if grade in GradeLevel._value2member_map_
+                    else GradeLevel.S1
+                ),
+                subject=(
+                    Subject(subject)
+                    if subject in Subject._value2member_map_
+                    else Subject.GENERAL
+                ),
+                user_role=(
+                    UserRole(user_role)
+                    if user_role in UserRole._value2member_map_
+                    else UserRole.STUDENT
+                ),
             )
             chunks = await self.mock_retriever.retrieve(rag_input)
 
@@ -382,7 +459,7 @@ class MockRAGPipeline:
                 "page_start": c.page_start,
                 "page_end": c.page_end,
                 "snippet": c.snippet,
-                "content": c.snippet, 
+                "content": c.snippet,
                 "score": c.score,
                 "metadata": {
                     "doc_id": c.doc_id,
@@ -394,7 +471,7 @@ class MockRAGPipeline:
 
         # 3. Generate answer using the uniform generator
         context_strs = [d["content"] for d in docs_dicts]
-        
+
         result = await self.generator.generate(
             query=query,
             context=context_strs,
@@ -409,7 +486,9 @@ class MockRAGPipeline:
         # 4. Build citations
         from somaai.modules.chat.citations import get_citation_extractor
         extractor = get_citation_extractor()
-        citations, chunks_map = extractor.extract_citations(docs_dicts, top_k=len(docs_dicts))
+        citations, chunks_map = extractor.extract_citations(
+            docs_dicts, top_k=len(docs_dicts)
+        )
 
         if not citations and docs_dicts:
             # Fallback: Cite all retrieved docs if Mock LLM didn't cite any

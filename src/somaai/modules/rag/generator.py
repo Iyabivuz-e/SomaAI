@@ -17,7 +17,6 @@ from somaai.modules.rag.prompts import (
     get_prompt_for_role,
 )
 from somaai.modules.rag.schemas import (
-    GroundedResponse,
     parse_grounded_response,
     validate_citations,
 )
@@ -43,7 +42,7 @@ class LLMGenerator(BaseGenerator):
     with curriculum context and validates citations.
     """
 
-    def __init__(self, settings: "Settings | None" = None) -> None:
+    def __init__(self, settings: Settings | None = None) -> None:
         """Initialize generator."""
         self._settings = settings
         self._llm = None
@@ -149,8 +148,8 @@ class LLMGenerator(BaseGenerator):
                 "citations_validated": validated_citations,
                 "citations_all_valid": citations_valid,
                 "reasoning": parsed.reasoning,
-                "analogy": None,
-                "realworld_context": None,
+                "analogy": parsed.analogy,
+                "realworld_context": parsed.realworld_context,
             }
 
         # Fallback: unstructured response
@@ -204,7 +203,7 @@ class LLMGenerator(BaseGenerator):
 class CombinedGenerator(BaseGenerator):
     """Synthesizes multiple generation strategies into a unified response."""
 
-    def __init__(self, settings: "Settings | None" = None) -> None:
+    def __init__(self, settings: Settings | None = None) -> None:
         self._generator = LLMGenerator(settings)
 
     async def generate(

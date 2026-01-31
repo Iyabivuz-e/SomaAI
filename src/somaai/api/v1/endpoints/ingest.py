@@ -14,7 +14,6 @@ from somaai.db import crud
 from somaai.db.session import async_session_maker
 from somaai.jobs.queue import enqueue_job, get_job_status
 from somaai.providers.storage import get_storage
-from somaai.settings import settings
 from somaai.utils.ids import generate_id
 
 # Rate limiting setup

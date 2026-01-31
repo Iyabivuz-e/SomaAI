@@ -118,7 +118,7 @@ async def get_job_status(job_id: str) -> JobResponse | None:
     """
     async with async_session_maker() as db:
         job = await crud.get_job(db, job_id)
-    
+
     if not job:
         return None
 

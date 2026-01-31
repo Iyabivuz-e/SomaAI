@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import re
 from decimal import Decimal
-from typing import List
 
 # Minimum chunk length (characters)
 MIN_CHUNK_LENGTH = 50

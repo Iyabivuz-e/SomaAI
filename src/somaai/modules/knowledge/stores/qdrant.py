@@ -9,11 +9,11 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from langchain_openai import OpenAIEmbeddings
 from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
-from qdrant_client.models import Filter, FieldCondition, MatchValue
+from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 from somaai.modules.knowledge.vectorstore import VectorStore
 from somaai.utils.files import compute_file_hash
@@ -29,7 +29,7 @@ _QDRANT_CLIENT: QdrantClient | None = None
 _EMBEDDINGS_MODEL: HuggingFaceEmbeddings | OpenAIEmbeddings | None = None
 
 
-def get_qdrant_client(settings: "Settings") -> QdrantClient:
+def get_qdrant_client(settings: Settings) -> QdrantClient:
     """Get singleton Qdrant client (connection pooling).
 
     Args:
@@ -49,7 +49,7 @@ def get_qdrant_client(settings: "Settings") -> QdrantClient:
     return _QDRANT_CLIENT
 
 
-def get_embeddings_model(settings: "Settings") -> HuggingFaceEmbeddings | OpenAIEmbeddings:
+def get_embeddings_model(settings: Settings) -> HuggingFaceEmbeddings | OpenAIEmbeddings:
     """Get singleton embeddings model.
 
     Args:
@@ -86,7 +86,7 @@ class QdrantStore(VectorStore):
     - Metadata filtering (grade, subject)
     """
 
-    def __init__(self, settings: "Settings") -> None:
+    def __init__(self, settings: Settings) -> None:
         """Initialize Qdrant store.
 
         Args:
@@ -110,19 +110,19 @@ class QdrantStore(VectorStore):
         """Get vector store."""
         if self._store is None:
             collection_name = self.settings.qdrant_collection_name
-            
+
             # Ensure collection exists
             if not self.client.collection_exists(collection_name):
                 logger.info(f"Collection {collection_name} not found, creating...")
-                
+
                 # Determine dimension dynamically
                 try:
                     # Generate a dummy embedding to get dimension
                     sample_embedding = self.embeddings.embed_query("test")
                     dimension = len(sample_embedding)
                     logger.info(f"Detected embedding dimension: {dimension}")
-                    
-                    from qdrant_client.models import VectorParams, Distance
+
+                    from qdrant_client.models import Distance, VectorParams
                     self.client.create_collection(
                         collection_name=collection_name,
                         vectors_config=VectorParams(
@@ -134,7 +134,7 @@ class QdrantStore(VectorStore):
                 except Exception as e:
                     logger.error(f"Failed to create collection: {e}")
                     # Let downstream fail if needed
-            
+
             self._store = QdrantVectorStore(
                 client=self.client,
                 collection_name=collection_name,
@@ -222,7 +222,7 @@ class QdrantStore(VectorStore):
 
         try:
             # Use should filter with multiple OR conditions
-            from qdrant_client.models import Filter, FieldCondition, MatchAny
+            from qdrant_client.models import FieldCondition, Filter, MatchAny
 
             results = self.client.scroll(
                 collection_name=self.settings.qdrant_collection_name,
@@ -332,7 +332,7 @@ class QdrantStore(VectorStore):
         Returns:
             List of documents with scores
         """
-        from qdrant_client.models import Filter, FieldCondition, MatchValue
+        from qdrant_client.models import FieldCondition, Filter, MatchValue
 
         must_conditions = []
         if grade:

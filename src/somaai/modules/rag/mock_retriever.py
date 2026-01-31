@@ -42,10 +42,18 @@ class MockRetriever:
 
         # Score by naive keyword overlap
         scored_chunks = []
-        query_words = set(inp.query.lower().split())
+        import string
+        
+        def tokenize(text: str) -> set[str]:
+            # Remove punctuation and split
+            translator = str.maketrans("", "", string.punctuation)
+            clean_text = text.lower().translate(translator)
+            return set(clean_text.split())
+
+        query_words = tokenize(inp.query)
 
         for chunk in filtered:
-            content_words = set(chunk["content"].lower().split())
+            content_words = tokenize(chunk["content"])
             overlap = len(query_words & content_words)
             score = min(overlap / max(len(query_words), 1), 1.0)
 

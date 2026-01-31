@@ -19,7 +19,7 @@ def get_rag_pipeline(settings: Settings, llm: LLMClient) -> BaseRAGPipeline:
 
     if _backend == "mock":
         return MockRAGPipeline(llm=llm, settings=settings)
-    
+
     # Return real pipeline for all other backends (groq, openai, etc.)
     # The real pipeline initializes its own components (Retriever, Generator)
     # using the global settings, but we pass settings explicitly if supported.

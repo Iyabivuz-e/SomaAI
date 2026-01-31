@@ -9,12 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
-
-from typing import cast
-
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from somaai.contracts.chat import CitationResponse
 from somaai.db.models import Chunk, Document, MessageCitation
@@ -107,7 +102,7 @@ class CitationExtractor:
 
     async def get_message_citations(
         self,
-        db: "AsyncSession",
+        db: AsyncSession,
         message_id: str,
     ) -> list[CitationResponse]:
         """Get citations for a previously saved message.
@@ -148,7 +143,7 @@ class CitationExtractor:
 
     async def save_citations(
         self,
-        db: "AsyncSession",
+        db: AsyncSession,
         message_id: str,
         citations: list[CitationResponse],
         chunks_map: dict[str, str],

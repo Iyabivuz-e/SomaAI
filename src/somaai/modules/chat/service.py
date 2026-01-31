@@ -77,7 +77,7 @@ class ChatService:
             "enable_analogy": effective_preferences.enable_analogy,
             "enable_realworld": effective_preferences.enable_realworld,
         }
-        
+
         rag_result = await self.rag_pipeline.run(
             query=question,
             grade=data.grade.value,
@@ -144,7 +144,7 @@ class ChatService:
         """Resolve effective preferences based on user role and profile."""
         if user_role == UserRole.STUDENT:
             return request_preferences
-            
+
         profile = await self._get_teacher_profile(actor_id)
         if profile:
             enable_analogy = (

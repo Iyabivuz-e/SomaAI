@@ -21,7 +21,10 @@ class MockLLMProvider:
     async def generate(self, prompt: str) -> str:
         import json
         return json.dumps({
-            "answer": "MOCK_ANSWER: You are SomaAI, an educational assistant for Rwandan students and teachers. You help with curriculum.",
+            "answer": (
+                "MOCK_ANSWER: You are SomaAI, an educational assistant for Rwandan "
+                "students and teachers. You help with curriculum."
+            ),
             "sufficiency": "sufficient",
             "is_grounded": True,
             "confidence": 1.0,
@@ -65,7 +68,7 @@ class GroqLLMProvider:
             from groq import AsyncGroq
         except ImportError:
             raise ImportError("groq package not found. Install with 'pip install groq'")
-        
+
         self.client = AsyncGroq(api_key=api_key)
         self.model = model
 
@@ -77,7 +80,7 @@ class GroqLLMProvider:
             ],
             model=self.model,
             response_format={"type": "json_object"},
-            temperature=0.1, 
+            temperature=0.1,
         )
         return response.choices[0].message.content or ""
 
@@ -86,7 +89,7 @@ class GroqLLMProvider:
         yield ""
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
-        raise NotImplementedError("Groq embeddings not implemented. Use local embeddings.")
+        raise NotImplementedError("Groq embeddings not implemented (use local).")
 
 
 def get_llm(settings: Settings) -> LLMClient:
