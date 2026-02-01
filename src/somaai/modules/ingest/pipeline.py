@@ -86,8 +86,13 @@ class IngestPipeline:
         suffix = file_path.suffix.lower()
 
         if suffix == ".pdf":
-            from langchain_community.document_loaders import PyPDFLoader
-            return PyPDFLoader(str(file_path))
+            # Prefer PyMuPDF for better encoding handling
+            try:
+                from langchain_community.document_loaders import PyMuPDFLoader
+                return PyMuPDFLoader(str(file_path))
+            except ImportError:
+                from langchain_community.document_loaders import PyPDFLoader
+                return PyPDFLoader(str(file_path))
         elif suffix == ".docx":
             from langchain_community.document_loaders import Docx2txtLoader
             return Docx2txtLoader(str(file_path))
@@ -147,8 +152,19 @@ class IngestPipeline:
 
             # Phase 1: Load document (0-20%)
             self._progress(on_progress, "Loading document", 5)
-            loader = self._get_loader(path)
-            pages = loader.load()
+            if path.suffix.lower() == ".pdf":
+                self._progress(on_progress, "PDF detected. Using forced OCR...", 10)
+                try:
+                    pages = self._load_with_ocr(path)
+                    self._progress(on_progress, "OCR Complete", 20)
+                except Exception as e:
+                    self._progress(on_progress, f"OCR Failed: {e}. Fallback to standard loader.", 10)
+                    loader = self._get_loader(path)
+                    pages = loader.load()
+            else:
+                loader = self._get_loader(path)
+                pages = loader.load()
+
             self._progress(on_progress, "Document loaded", 20)
 
             # Phase 2: Split into chunks (20-40%)
@@ -166,6 +182,8 @@ class IngestPipeline:
                 remove_boilerplate=True,
             )
             self._progress(on_progress, f"{len(chunks)} quality chunks", 40)
+            
+
 
             # Phase 3: Add metadata to each chunk (40-50%)
             self._progress(on_progress, "Adding metadata", 40)
@@ -276,3 +294,24 @@ class IngestPipeline:
         """
         if callback:
             callback(stage, pct)
+
+    def _load_with_ocr(self, file_path: Path) -> list:
+        """Load PDF using OCR (Optical Character Recognition).
+        
+        Requires: pdf2image, pytesseract, tesseract-ocr, poppler-utils
+        """
+        from pdf2image import convert_from_path
+        import pytesseract
+        from langchain_core.documents import Document
+        
+        # Convert PDF to images
+        # thread_count matches CPU cores usually
+        images = convert_from_path(str(file_path), thread_count=4)
+        
+        docs = []
+        for i, image in enumerate(images):
+            # Extract text from image
+            text = pytesseract.image_to_string(image)
+            docs.append(Document(page_content=text, metadata={"source": str(file_path), "page": i}))
+            
+        return docs

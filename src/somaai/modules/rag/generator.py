@@ -107,7 +107,21 @@ class LLMGenerator(BaseGenerator):
         full_prompt = f"{SYSTEM_PROMPT}\n\n{prompt}"
 
         # Generate response
-        response = await self.llm.generate(full_prompt)
+        try:
+            response = await self.llm.generate(full_prompt)
+        except Exception as e:
+            logger.error(f"LLM generation failed: {str(e)}")
+            return {
+                "answer": "I encountered an error while processing your request. Please try refining your question.",
+                "sufficiency": "insufficient",
+                "is_grounded": False,
+                "confidence": 0.0,
+                "citations_validated": [],
+                "citations_all_valid": False,
+                "reasoning": "",
+                "analogy": None,
+                "realworld_context": None,
+            }
 
         # Try to parse structured output
         parsed = parse_grounded_response(response)

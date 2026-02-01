@@ -36,6 +36,8 @@ dependencies = [
     "greenlet>=3.3.0",
     "aiofiles>=24.0.0",
     "groq>=1.0.0",
+    "pymupdf>=1.26.7",
+    "marker-pdf>=1.10.2",
 ]
 
 [project.optional-dependencies]
@@ -70,6 +72,9 @@ rag = [
     "langchain-text-splitters>=0.3.0",
     # Document processing
     "pypdf>=4.0.0",
+    "pymupdf>=1.24.0",
+    "pytesseract>=0.3.10",
+    "pdf2image>=1.17.0",
     "docx2txt>=0.8",
     # TODO (Post-MVP): Uncomment for cross-encoder reranking
     # Requires PyTorch (~873MB) + CUDA libs (~2.6GB) = ~3.5GB total
