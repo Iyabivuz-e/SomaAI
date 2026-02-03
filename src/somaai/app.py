@@ -48,6 +48,7 @@ def create_app() -> FastAPI:
     # Add Prometheus metrics instrumentation
     try:
         from prometheus_fastapi_instrumentator import Instrumentator
+
         Instrumentator().instrument(app).expose(app, endpoint="/metrics")
     except ImportError:
         pass  # Optional dependency

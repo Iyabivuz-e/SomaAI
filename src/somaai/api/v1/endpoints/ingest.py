@@ -20,6 +20,7 @@ from somaai.utils.ids import generate_id
 try:
     from slowapi import Limiter
     from slowapi.util import get_remote_address
+
     limiter = Limiter(key_func=get_remote_address)
     RATE_LIMITING_ENABLED = True
 except ImportError:
@@ -49,7 +50,10 @@ def validate_file(file: UploadFile) -> None:
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file type: {ext}. Allowed: {', '.join(ALLOWED_EXTENSIONS)}",
+            detail=(
+                f"Unsupported file type: {ext}. "
+                f"Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
+            ),
         )
 
 
@@ -102,7 +106,9 @@ async def ingest_document(
         if len(file_content) > MAX_FILE_SIZE:
             raise HTTPException(
                 status_code=400,
-                detail=f"File too large. Maximum size: {MAX_FILE_SIZE // (1024*1024)}MB",
+                detail=(
+                    f"File too large. Maximum size: {MAX_FILE_SIZE // (1024 * 1024)}MB"
+                ),
             )
 
         # Save to storage

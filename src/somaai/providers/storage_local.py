@@ -41,6 +41,7 @@ class LocalStorage(StorageBackend):
             base_path: Base directory for file storage
         """
         from somaai.settings import settings
+
         self.base_path = Path(base_path or settings.storage_local_path)
         self.base_path.mkdir(parents=True, exist_ok=True)
 

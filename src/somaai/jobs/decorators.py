@@ -21,21 +21,22 @@ R = TypeVar("R")
 
 def with_job_tracking(task_name: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Decorator for job status tracking.
-    
+
     Automatically updates job status to RUNNING on start,
     COMPLETED on success, or FAILED on exception.
-    
+
     Usage:
         @with_job_tracking("ingest_document")
         async def ingest_document_task(job_id: str, **kwargs):
             ...
-    
+
     Args:
         task_name: Name of the task for logging
-        
+
     Returns:
         Decorated function with job tracking
     """
+
     def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
@@ -78,6 +79,7 @@ def with_job_tracking(task_name: str) -> Callable[[Callable[P, R]], Callable[P, 
                 raise
 
         return wrapper
+
     return decorator
 
 
@@ -85,22 +87,23 @@ def with_progress_callback(
     job_id_kwarg: str = "job_id",
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Decorator that injects a database-backed progress callback.
-    
+
     Creates a sync-compatible progress callback that updates the database.
     The callback is passed as 'progress_callback' kwarg to the decorated function.
-    
+
     Usage:
         @with_progress_callback()
         async def some_task(job_id: str, progress_callback=None, **kwargs):
             # progress_callback(50) updates database
             ...
-    
+
     Args:
         job_id_kwarg: Name of the job_id keyword argument
-        
+
     Returns:
         Decorated function with progress callback
     """
+
     def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
@@ -131,25 +134,29 @@ def with_progress_callback(
             return await func(*args, **kwargs)
 
         return wrapper
+
     return decorator
 
 
 def register_task(name: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Decorator to register a task in the global registry.
-    
+
     Usage:
         @register_task("ingest_document")
         async def ingest_document_task(job_id: str, **kwargs):
             ...
-    
+
     Args:
         name: Task name for registration
-        
+
     Returns:
         Decorated function (registered in TASK_REGISTRY)
     """
+
     def decorator(func: Callable[P, R]) -> Callable[P, R]:
         from somaai.jobs.tasks import TASK_REGISTRY
+
         TASK_REGISTRY[name] = func
         return func
+
     return decorator

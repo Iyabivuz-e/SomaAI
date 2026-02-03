@@ -43,7 +43,7 @@ class MockRetriever:
         # Score by naive keyword overlap
         scored_chunks = []
         import string
-        
+
         def tokenize(text: str) -> set[str]:
             # Remove punctuation and split
             translator = str.maketrans("", "", string.punctuation)

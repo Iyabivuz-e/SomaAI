@@ -38,16 +38,16 @@ async def get_redis_pool():
         else:
             host, port, db = "localhost", 6379, 1
 
-        return await create_pool(RedisSettings(
-            host=host,
-            port=port,
-            database=db,
-            password=settings.redis_password or None,
-        ))
-    except ImportError:
-        raise ImportError(
-            "arq is required for job queue. Install with: uv add arq"
+        return await create_pool(
+            RedisSettings(
+                host=host,
+                port=port,
+                database=db,
+                password=settings.redis_password or None,
+            )
         )
+    except ImportError:
+        raise ImportError("arq is required for job queue. Install with: uv add arq")
 
 
 async def enqueue_job(
@@ -77,6 +77,7 @@ async def enqueue_job(
     if settings.queue_backend == "sync":
         # Sync mode: Execute immediately
         from somaai.jobs.tasks import TASK_REGISTRY
+
         task_fn = TASK_REGISTRY.get(task_name)
         if task_fn:
             try:
@@ -131,7 +132,7 @@ async def get_job_status(job_id: str) -> JobResponse | None:
         created_at=job.created_at,
         started_at=job.started_at,
         completed_at=job.completed_at,
-        metadata=None, # job.metadata causes validation error || later, use the job.metadata
+        metadata=None,  # TODO: fix validation error for job.metadata
     )
 
 

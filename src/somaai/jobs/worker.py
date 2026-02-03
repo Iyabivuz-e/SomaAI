@@ -5,9 +5,9 @@ Run separately from the main application.
 
 Usage:
     arq somaai.jobs.worker.WorkerSettings
-    
+
     OR
-    
+
     python -m somaai.jobs.worker
 """
 
@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 async def ingest_document(ctx: dict, job_id: str, **kwargs) -> dict:
     """Document ingestion task wrapper."""
     from somaai.jobs.tasks import ingest_document_task
+
     await ingest_document_task(job_id=job_id, **kwargs)
     return {"status": "completed"}
 
@@ -34,13 +35,14 @@ async def ingest_document(ctx: dict, job_id: str, **kwargs) -> dict:
 async def generate_quiz(ctx: dict, job_id: str, **kwargs) -> dict:
     """Quiz generation task wrapper."""
     from somaai.jobs.tasks import generate_quiz_task
+
     await generate_quiz_task(job_id=job_id, **kwargs)
     return {"status": "completed"}
 
 
 def _get_redis_settings():
     """Get Redis settings for ARQ worker.
-    
+
     Must be called at class definition time to set the class attribute.
     """
     from arq.connections import RedisSettings
@@ -93,7 +95,7 @@ class WorkerSettings:
 
 def run_worker() -> None:
     """Entry point for running the worker.
-    
+
     This is a SYNCHRONOUS function that creates its own event loop.
     Do NOT call this from within an async context.
 

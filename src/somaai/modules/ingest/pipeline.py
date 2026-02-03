@@ -40,6 +40,7 @@ class IngestPipeline:
         """Get settings."""
         if self._settings is None:
             from somaai.settings import settings
+
             self._settings = settings
         return self._settings
 
@@ -48,19 +49,20 @@ class IngestPipeline:
         """Get text splitter."""
         if self._splitter is None:
             from langchain_text_splitters import RecursiveCharacterTextSplitter
+
             self._splitter = RecursiveCharacterTextSplitter(
                 chunk_size=1000,
                 chunk_overlap=200,
                 separators=[
-                    "\n## ",       # Major headings
-                    "\n### ",      # Subheadings
-                    "\n#### ",     # Sub-subheadings
-                    "\n\n",        # Paragraphs
-                    "\n• ",        # Bullet points
-                    "\n- ",        # List items
-                    ". ",          # Sentences
-                    " ",           # Words
-                    "",            # Characters
+                    "\n## ",  # Major headings
+                    "\n### ",  # Subheadings
+                    "\n#### ",  # Sub-subheadings
+                    "\n\n",  # Paragraphs
+                    "\n• ",  # Bullet points
+                    "\n- ",  # List items
+                    ". ",  # Sentences
+                    " ",  # Words
+                    "",  # Characters
                 ],
                 length_function=len,
             )
@@ -71,6 +73,7 @@ class IngestPipeline:
         """Get Qdrant store."""
         if self._store is None:
             from somaai.modules.knowledge.stores.qdrant import QdrantStore
+
             self._store = QdrantStore(self.settings)
         return self._store
 
@@ -89,18 +92,23 @@ class IngestPipeline:
             # Prefer PyMuPDF for better encoding handling
             try:
                 from langchain_community.document_loaders import PyMuPDFLoader
+
                 return PyMuPDFLoader(str(file_path))
             except ImportError:
                 from langchain_community.document_loaders import PyPDFLoader
+
                 return PyPDFLoader(str(file_path))
         elif suffix == ".docx":
             from langchain_community.document_loaders import Docx2txtLoader
+
             return Docx2txtLoader(str(file_path))
         elif suffix == ".txt":
             from langchain_community.document_loaders import TextLoader
+
             return TextLoader(str(file_path))
         elif suffix == ".md":
             from langchain_community.document_loaders import UnstructuredMarkdownLoader
+
             return UnstructuredMarkdownLoader(str(file_path))
         else:
             raise ValueError(f"Unsupported file format: {suffix}")
@@ -153,12 +161,20 @@ class IngestPipeline:
             # Phase 1: Load document (0-20%)
             self._progress(on_progress, "Loading document", 5)
             if path.suffix.lower() == ".pdf":
-                self._progress(on_progress, "PDF detected. Using forced OCR (slow but accurate)...", 10)
+                self._progress(
+                    on_progress,
+                    "PDF detected. Using forced OCR (slow but accurate)...",
+                    10,
+                )
                 try:
                     pages = self._load_with_ocr(path)
                     self._progress(on_progress, "OCR Complete", 20)
                 except Exception as e:
-                    self._progress(on_progress, f"OCR Failed: {e}. Fallback to standard loader.", 10)
+                    self._progress(
+                        on_progress,
+                        f"OCR Failed: {e}. Fallback to standard loader.",
+                        10,
+                    )
                     loader = self._get_loader(path)
                     pages = loader.load()
             else:
@@ -175,6 +191,7 @@ class IngestPipeline:
             # Phase 2.5: Filter low-quality chunks (30-40%)
             self._progress(on_progress, "Filtering low-quality chunks", 30)
             from somaai.modules.ingest.quality import filter_chunks
+
             chunks = filter_chunks(
                 chunks,
                 min_length=50,
@@ -182,8 +199,6 @@ class IngestPipeline:
                 remove_boilerplate=True,
             )
             self._progress(on_progress, f"{len(chunks)} quality chunks", 40)
-            
-
 
             # Phase 3: Add metadata to each chunk (40-50%)
             self._progress(on_progress, "Adding metadata", 40)
@@ -191,30 +206,32 @@ class IngestPipeline:
                 # Extract page number from source metadata
                 page_num = chunk.metadata.get("page", 1) + 1  # 0-indexed to 1-indexed
 
-                chunk.metadata.update({
-                    "doc_id": doc_id,
-                    "title": title,
-                    "grade": grade,
-                    "subject": subject,
-                    "chunk_index": i,
-                    "page_start": page_num,
-                    "page_end": page_num,
-                    "chunk_id": generate_id(),
-                })
+                chunk.metadata.update(
+                    {
+                        "doc_id": doc_id,
+                        "title": title,
+                        "grade": grade,
+                        "subject": subject,
+                        "chunk_index": i,
+                        "page_start": page_num,
+                        "page_end": page_num,
+                        "chunk_id": generate_id(),
+                    }
+                )
             self._progress(on_progress, "Metadata added", 50)
 
             # Phase 4: Store in Qdrant with batching (50-95%)
             self._progress(on_progress, "Storing in vector database", 50)
 
             # Batch processing for efficient embedding generation
-            BATCH_SIZE = 50
-            total_batches = (len(chunks) + BATCH_SIZE - 1) // BATCH_SIZE
+            batch_size = 50
+            total_batches = (len(chunks) + batch_size - 1) // batch_size
 
             try:
                 import aioitertools
 
                 batch_idx = 0
-                async for batch in aioitertools.batched(chunks, BATCH_SIZE):
+                async for batch in aioitertools.batched(chunks, batch_size):
                     batch_list = list(batch)
                     texts = [c.page_content for c in batch_list]
                     metadata_list = [c.metadata for c in batch_list]
@@ -227,7 +244,11 @@ class IngestPipeline:
 
                     batch_idx += 1
                     progress = 50 + int(45 * batch_idx / total_batches)
-                    self._progress(on_progress, f"Batch {batch_idx}/{total_batches}", progress)
+                    self._progress(
+                        on_progress,
+                        f"Batch {batch_idx}/{total_batches}",
+                        progress,
+                    )
 
             except ImportError:
                 # Fallback to sequential if aioitertools not installed
@@ -297,21 +318,26 @@ class IngestPipeline:
 
     def _load_with_ocr(self, file_path: Path) -> list:
         """Load PDF using OCR (Optical Character Recognition).
-        
+
         Requires: pdf2image, pytesseract, tesseract-ocr, poppler-utils
         """
-        from pdf2image import convert_from_path
         import pytesseract
         from langchain_core.documents import Document
-        
+        from pdf2image import convert_from_path
+
         # Convert PDF to images
         # thread_count matches CPU cores usually
         images = convert_from_path(str(file_path), thread_count=4)
-        
+
         docs = []
         for i, image in enumerate(images):
             # Extract text from image
             text = pytesseract.image_to_string(image)
-            docs.append(Document(page_content=text, metadata={"source": str(file_path), "page": i}))
-            
+            docs.append(
+                Document(
+                    page_content=text,
+                    metadata={"source": str(file_path), "page": i},
+                )
+            )
+
         return docs

@@ -144,7 +144,7 @@ def cached_retrieval(
 # Fallback in-memory cache for development without Redis
 class SimpleCache:
     """In-memory cache fallback with TTL eviction.
-    
+
     Prevents unbounded memory growth by:
     - Storing expiration times with entries
     - Evicting expired entries on access
@@ -160,6 +160,7 @@ class SimpleCache:
     def _evict_expired(self) -> None:
         """Remove expired entries."""
         import time
+
         now = time.time()
         expired = [k for k, (exp, _) in self._cache.items() if exp < now]
         for key in expired:

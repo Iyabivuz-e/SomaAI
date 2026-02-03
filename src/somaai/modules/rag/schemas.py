@@ -27,30 +27,23 @@ class GroundedResponse(BaseModel):
 
     answer: str = Field(..., description="The answer to the question")
     is_grounded: bool = Field(
-        ...,
-        description="True if answer is fully based on provided context"
+        ..., description="True if answer is fully based on provided context"
     )
     confidence: Decimal = Field(
         ...,
         ge=Decimal("0.0"),
         le=Decimal("1.0"),
-        description="Confidence score 0-1 (Decimal precision)"
+        description="Confidence score 0-1 (Decimal precision)",
     )
     citations: list[CitationOutput] = Field(
-        default_factory=list,
-        description="Page citations used in the answer"
+        default_factory=list, description="Page citations used in the answer"
     )
-    reasoning: str = Field(
-        "",
-        description="Brief reasoning for the answer"
-    )
+    reasoning: str = Field("", description="Brief reasoning for the answer")
     analogy: str | None = Field(
-        None,
-        description="Analogy to explain the concept (if requested)"
+        None, description="Analogy to explain the concept (if requested)"
     )
     realworld_context: str | None = Field(
-        None,
-        description="Real-world application (if requested)"
+        None, description="Real-world application (if requested)"
     )
 
 
@@ -59,16 +52,12 @@ class InsufficientContextResponse(BaseModel):
 
     answer: str = Field(
         default=(
-            "I don't have enough information in the curriculum "
-            "to answer this question."
+            "I don't have enough information in the curriculum to answer this question."
         ),
     )
     is_grounded: bool = Field(default=False)
     confidence: Decimal = Field(default=Decimal("0.0"))
-    missing_info: str = Field(
-        ...,
-        description="What information is missing"
-    )
+    missing_info: str = Field(..., description="What information is missing")
 
 
 # JSON schema for prompting
@@ -97,18 +86,24 @@ def parse_grounded_response(text: str) -> GroundedResponse | None:
     import json
     import re
 
-    # Try to find JSON in response
+    # 1. Try direct JSON parsing (simplest)
+    try:
+        data = json.loads(text)
+        return GroundedResponse(**data)
+    except (json.JSONDecodeError, ValueError):
+        pass
+
+    # 2. Try to find JSON in markdown code blocks
     json_patterns = [
         r"```json\s*(.*?)\s*```",
         r"```\s*(.*?)\s*```",
-        r"\{[^{}]*\"answer\"[^{}]*\}",
     ]
 
     for pattern in json_patterns:
         match = re.search(pattern, text, re.DOTALL)
         if match:
             try:
-                json_str = match.group(1) if "```" in pattern else match.group(0)
+                json_str = match.group(1)
                 data = json.loads(json_str)
                 return GroundedResponse(**data)
             except (json.JSONDecodeError, ValueError):
@@ -146,11 +141,13 @@ def validate_citations(
     for citation in response.citations:
         is_valid = citation.page_number in available_pages
 
-        validated.append({
-            "page_number": citation.page_number,
-            "quote": citation.quote,
-            "valid": is_valid,
-        })
+        validated.append(
+            {
+                "page_number": citation.page_number,
+                "quote": citation.quote,
+                "valid": is_valid,
+            }
+        )
 
         if not is_valid:
             all_valid = False

@@ -16,26 +16,29 @@ from decimal import Decimal
 # Minimum chunk length (characters)
 MIN_CHUNK_LENGTH = 50
 
+
 def is_garbage_text(text: str) -> bool:
     """Check if text appears to be garbage/corrupted.
-    
+
     Detects:
     - Fragmented text (C h a r)
     - Missing spaces (LongStringOfGarbage)
     """
     if not text:
         return True
-        
+
     words = text.split()
     if not words:
         return True
-        
+
     avg_len = sum(len(w) for w in words) / len(words)
-    
+
     # Heuristics
-    if avg_len < 1.5: return True  # Fragmented
-    if avg_len > 25: return True   # Missing spaces/Garbage
-    
+    if avg_len < 1.5:
+        return True  # Fragmented
+    if avg_len > 25:
+        return True  # Missing spaces/Garbage
+
     # Check vowel ratio (English is typically ~40%, garbage is often low)
     vowels = set("aeiouAEIOU")
     vowel_count = sum(1 for c in text if c in vowels)
@@ -43,7 +46,7 @@ def is_garbage_text(text: str) -> bool:
         vowel_ratio = vowel_count / len(text)
         if vowel_ratio < 0.2:
             return True
-    
+
     return False
 
 
@@ -107,13 +110,21 @@ def calculate_quality_score(text: str) -> Decimal:
 
     # Whitespace ratio penalty
     whitespace_count = sum(1 for c in text if c.isspace())
-    whitespace_ratio = Decimal(str(whitespace_count)) / Decimal(str(len(text))) if text else Decimal("1")
+    whitespace_ratio = (
+        Decimal(str(whitespace_count)) / Decimal(str(len(text)))
+        if text
+        else Decimal("1")
+    )
     if whitespace_ratio > MAX_WHITESPACE_RATIO:
-        score *= (Decimal("1") - whitespace_ratio) / (Decimal("1") - MAX_WHITESPACE_RATIO)
+        score *= (Decimal("1") - whitespace_ratio) / (
+            Decimal("1") - MAX_WHITESPACE_RATIO
+        )
 
     # Alphanumeric ratio bonus
     alnum_count = sum(1 for c in text if c.isalnum())
-    alnum_ratio = Decimal(str(alnum_count)) / Decimal(str(len(text))) if text else Decimal("0")
+    alnum_ratio = (
+        Decimal(str(alnum_count)) / Decimal(str(len(text))) if text else Decimal("0")
+    )
     if alnum_ratio < Decimal("0.3"):
         score *= alnum_ratio / Decimal("0.3")
 
@@ -153,11 +164,13 @@ def filter_chunks(
     filtered = []
 
     for chunk in chunks:
-        raw_content = chunk.page_content if hasattr(chunk, "page_content") else str(chunk)
-        
+        raw_content = (
+            chunk.page_content if hasattr(chunk, "page_content") else str(chunk)
+        )
+
         # Clean content (removes null bytes etc)
         content = clean_chunk_text(raw_content)
-        
+
         # Update chunk content
         if hasattr(chunk, "page_content"):
             chunk.page_content = content
@@ -178,7 +191,6 @@ def filter_chunks(
         # Add quality score to metadata
         if hasattr(chunk, "metadata"):
             chunk.metadata["quality_score"] = round(float(quality), 3)
-
 
         filtered.append(chunk)
 

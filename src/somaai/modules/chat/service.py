@@ -119,7 +119,7 @@ class ChatService:
             db=self.db,
             message_id=message_id,
             citations=citations_objects,
-            chunks_map=chunks_map
+            chunks_map=chunks_map,
         )
 
         await self.db.flush()
@@ -197,7 +197,9 @@ class ChatService:
             return None
 
         # Delegate citation retrieval to manager
-        citations = await self.citation_manager.get_message_citations(self.db, message_id)
+        citations = await self.citation_manager.get_message_citations(
+            self.db, message_id
+        )
 
         return MessageResponse(
             message_id=cast(str, message.id),

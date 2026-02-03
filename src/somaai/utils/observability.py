@@ -223,6 +223,7 @@ def traced(operation: str):
     Returns:
         Decorator function
     """
+
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -260,4 +261,5 @@ def traced(operation: str):
                 raise
 
         return wrapper
+
     return decorator

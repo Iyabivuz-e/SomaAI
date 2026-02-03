@@ -28,8 +28,6 @@ def setup_middleware(app: FastAPI) -> None:
 
         # Try to use Redis storage for distributed rate limiting
         try:
-            from slowapi.extension import LimiterMiddlewareWithStorage
-
             from somaai.settings import settings
 
             # Redis-backed storage for horizontal scaling
@@ -53,4 +51,3 @@ def setup_middleware(app: FastAPI) -> None:
 
     except ImportError:
         logger.info("slowapi not installed, rate limiting disabled")
-

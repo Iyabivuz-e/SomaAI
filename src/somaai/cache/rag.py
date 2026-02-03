@@ -37,6 +37,7 @@ class EmbeddingCache:
         if self._redis is None:
             try:
                 from somaai.utils.redis import get_cache_redis
+
                 self._redis = await get_cache_redis()
             except Exception as e:
                 logger.warning(f"Failed to initialize embedding cache: {e}")
@@ -84,7 +85,9 @@ class EmbeddingCache:
             from somaai.utils.serialization import json_serializer
 
             key = self._make_key(query)
-            await redis.setex(key, self.ttl, json.dumps(embedding, default=json_serializer))
+            await redis.setex(
+                key, self.ttl, json.dumps(embedding, default=json_serializer)
+            )
 
         except Exception as e:
             logger.warning(f"Embedding cache set failed: {e}")
@@ -96,7 +99,12 @@ class ResponseCache:
     Caches by query + grade + subject, only for high-confidence responses.
     """
 
-    def __init__(self, redis_client=None, ttl: int = 86400, min_confidence: Decimal = Decimal("0.7")):
+    def __init__(
+        self,
+        redis_client=None,
+        ttl: int = 86400,
+        min_confidence: Decimal = Decimal("0.7"),
+    ):
         """Initialize response cache.
 
         Args:
@@ -114,6 +122,7 @@ class ResponseCache:
         if self._redis is None:
             try:
                 from somaai.utils.redis import get_cache_redis
+
                 self._redis = await get_cache_redis()
             except Exception as e:
                 logger.warning(f"Failed to initialize response cache: {e}")
@@ -176,7 +185,9 @@ class ResponseCache:
         is_grounded = response.get("is_grounded", True)
 
         if confidence < self.min_confidence or not is_grounded:
-            logger.debug(f"Skipping cache: confidence={confidence}, grounded={is_grounded}")
+            logger.debug(
+                f"Skipping cache: confidence={confidence}, grounded={is_grounded}"
+            )
             return
 
         try:
@@ -191,7 +202,10 @@ class ResponseCache:
             response_copy.pop("citations", None)
 
             from somaai.utils.serialization import json_serializer
-            await redis.setex(key, self.ttl, json.dumps(response_copy, default=json_serializer))
+
+            await redis.setex(
+                key, self.ttl, json.dumps(response_copy, default=json_serializer)
+            )
             logger.info(f"Cached response: {query[:50]}...")
 
         except Exception as e:
@@ -233,6 +247,7 @@ def get_embedding_cache() -> EmbeddingCache:
     global _embedding_cache
     if _embedding_cache is None:
         from somaai.cache.config import get_cache_config
+
         config = get_cache_config()
         _embedding_cache = EmbeddingCache(ttl=config.embedding_ttl)
     return _embedding_cache
@@ -243,6 +258,7 @@ def get_response_cache() -> ResponseCache:
     global _response_cache
     if _response_cache is None:
         from somaai.cache.config import get_cache_config
+
         config = get_cache_config()
         _response_cache = ResponseCache(
             ttl=config.query_ttl,  # Use query_ttl for responses

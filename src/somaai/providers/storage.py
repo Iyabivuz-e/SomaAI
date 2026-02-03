@@ -95,6 +95,7 @@ def get_storage() -> StorageBackend:
 
     if backend == "local":
         from somaai.providers.storage_local import LocalStorage
+
         return LocalStorage()
 
     if backend == "gdrive":

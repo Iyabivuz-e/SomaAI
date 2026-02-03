@@ -13,7 +13,7 @@ def client():
     from somaai.settings import Settings
 
     app = create_app()
-    
+
     # Force mock backend for tests
     def get_test_settings():
         return Settings(llm_backend="mock")

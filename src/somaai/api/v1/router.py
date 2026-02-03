@@ -14,7 +14,7 @@ from somaai.api.v1.endpoints import (
     ingest,
     meta,
     quiz,
-    retrieval,
+    # retrieval,
     teacher,
 )
 
@@ -42,7 +42,7 @@ v1_router.include_router(ingest.router)
 v1_router.include_router(chunked_upload.router)
 
 # Retrieval - Debug/admin search
-v1_router.include_router(retrieval.router)
+# v1_router.include_router(retrieval.router)
 
 # Feedback - Response ratings
 # Feedback - Response ratings

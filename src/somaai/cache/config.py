@@ -36,6 +36,7 @@ class CacheConfig:
         # Use main settings if available
         try:
             from somaai.settings import settings as main_settings
+
             return cls(
                 redis_url=main_settings.redis_cache_url,
                 redis_password=main_settings.redis_password,
@@ -43,8 +44,12 @@ class CacheConfig:
                 embedding_ttl=main_settings.cache_embedding_ttl,
                 retrieval_ttl=main_settings.cache_retrieval_ttl,
                 session_ttl=main_settings.cache_session_ttl,
-                semantic_enabled=os.getenv("CACHE_SEMANTIC_ENABLED", "true").lower() == "true",
-                similarity_threshold=float(os.getenv("CACHE_SIMILARITY_THRESHOLD", "0.92")),
+                semantic_enabled=(
+                    os.getenv("CACHE_SEMANTIC_ENABLED", "true").lower() == "true"
+                ),
+                similarity_threshold=float(
+                    os.getenv("CACHE_SIMILARITY_THRESHOLD", "0.92")
+                ),
                 embedding_dimension=int(os.getenv("CACHE_EMBEDDING_DIM", "768")),
                 namespace=os.getenv("CACHE_NAMESPACE", "somaai"),
             )
@@ -57,8 +62,12 @@ class CacheConfig:
                 embedding_ttl=int(os.getenv("CACHE_EMBEDDING_TTL", "3600")),
                 retrieval_ttl=int(os.getenv("CACHE_RETRIEVAL_TTL", "3600")),
                 session_ttl=int(os.getenv("CACHE_SESSION_TTL", "3600")),
-                semantic_enabled=os.getenv("CACHE_SEMANTIC_ENABLED", "true").lower() == "true",
-                similarity_threshold=float(os.getenv("CACHE_SIMILARITY_THRESHOLD", "0.92")),
+                semantic_enabled=(
+                    os.getenv("CACHE_SEMANTIC_ENABLED", "true").lower() == "true"
+                ),
+                similarity_threshold=float(
+                    os.getenv("CACHE_SIMILARITY_THRESHOLD", "0.92")
+                ),
                 embedding_dimension=int(os.getenv("CACHE_EMBEDDING_DIM", "768")),
                 namespace=os.getenv("CACHE_NAMESPACE", "somaai"),
             )

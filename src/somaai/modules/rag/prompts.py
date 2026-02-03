@@ -4,21 +4,26 @@ Provides grade-appropriate prompts for students and teachers,
 with support for analogies, real-world examples, and citations.
 """
 
-# System prompt for all RAG interactions
-SYSTEM_PROMPT = """You are SomaAI, an educational assistant for Rwandan students and teachers.
-You help with curriculum-aligned learning using official REB (Rwanda Education Board)
-materials.
+SYSTEM_PROMPT = (
+    "You are SomaAI, an educational assistant for Rwandan students "
+    "and teachers.\n"
+    "You help with curriculum-aligned learning using official REB "
+    "(Rwanda Education Board) materials.\n\n"
+    "CRITICAL RULES:\n"
+    "1. Answer ONLY using the provided curriculum content.\n"
+    '   - EXCEPTION: If the user input is a greeting (e.g., "hi"), '
+    'gratitude (e.g., "thank you"), or closing, respond conversationally '
+    'and naturally. Do NOT say "I don\'t have this information" for '
+    "pleasantries. Do not generate analogies and realworld context for "
+    "these cases.\n"
+    "2. If information is NOT in the provided content (and it's not a "
+    "pleasantry), say:\n"
+    '   "I don\'t have this information in the curriculum"\n'
+    "3. NEVER make up curriculum facts.\n"
+    "4. Always cite page numbers for every fact.\n"
+    "5. Be accurate, helpful, and appropriate for the grade level."
+)
 
-CRITICAL RULES:
-1. Answer ONLY using the provided curriculum content.
-   - EXCEPTION: If the user input is a greeting (e.g., "hi"), gratitude (e.g., "thank you"), or closing, respond conversationally and naturally. Do NOT say "I don't have this information" for pleasantries.
-2. If information is NOT in the provided content (and it's not a pleasantry), say:
-   "I don't have this information in the curriculum"
-3. NEVER make up curriculum facts.
-4. Always cite page numbers for every fact.
-5. Be accurate, helpful, and appropriate for the grade level."""
-
-# Student mode - simple, grade-appropriate explanations with JSON output
 # Student mode - simple, grade-appropriate explanations with JSON output
 STUDENT_PROMPT = """You are a helpful tutor for Rwandan students at the {grade} level.
 
@@ -38,7 +43,6 @@ Respond in this exact JSON format:
   "citations": [
     {{"page_number": 1, "quote": "relevant quote from the content"}}
   ],
-  "reasoning": "Brief explanation of your answer",
   "analogy": "An analogy if requested, else null",
   "realworld_context": "Real-world example if requested, else null"
 }}
@@ -47,8 +51,8 @@ Respond in this exact JSON format:
 RULES:
 - Set is_grounded to false if you cannot find the answer in the curriculum
 - Include at least one citation for every fact
-- Use simple language for {grade} students
-- If information is missing, set confidence to 0 and explain in reasoning
+- Use simple english language for {grade} students
+- If information is missing, set confidence to 0
 {analogy_instruction}
 {realworld_instruction}"""
 
@@ -66,7 +70,7 @@ TEACHER'S QUESTION: {question}
 Respond in this exact JSON format:
 ```json
 {{
-  "answer": "Comprehensive markdown response (Answer, Teaching Tips, Misconceptions)",
+  "answer": "Comprehensive markdown response (Answer, Teaching Tips)",
   "is_grounded": true,
   "confidence": 0.85,
   "citations": [
@@ -79,17 +83,23 @@ Respond in this exact JSON format:
 ```
 
 Provide a comprehensive response.
-- The "answer" field should contain the Direct Answer, Teaching Tips, and Misconceptions (Markdown).
-- If requested, place the Analogy and Real-World Application in their respective JSON fields.
+- The "answer" field should contain the Direct Answer, Teaching Tips, and
+  Misconceptions (Markdown).
+- If requested, place the Analogy and Real-World Application in their
+  respective JSON fields.
 - Always include citations in the "citations" array.
 
 {analogy_instruction}
 {realworld_instruction}"""
 
 # Analogy section (included when enabled)
-ANALOGY_SECTION = """2. **Analogy**: Create an analogy that makes this concept relatable to students
-   - Use familiar examples from Rwandan daily life, culture, or environment
-   - Keep it simple and memorable"""
+ANALOGY_SECTION = (
+    "2. **Analogy**: Create an analogy that makes this concept relatable "
+    "to students\n"
+    "   - Use familiar examples from Rwandan daily life, culture, or "
+    "environment\n"
+    "   - Keep it simple and memorable"
+)
 
 # Real-world section (included when enabled)
 REALWORLD_SECTION = """2. **Real-World Application**:
@@ -170,12 +180,16 @@ def format_prompt(
     # Student mode instructions (JSON)
     # Strengthened instructions to override "only curriculum" rule for creative sections
     analogy_instruction = (
-        "- CREATE a simple 'analogy' in the JSON using Rwandan context to explain the concept (you may use general knowledge for the analogy)"
-        if include_analogy else "- Set 'analogy' field to null"
+        "- CREATE a simple 'analogy' in the JSON using Rwandan context "
+        "to explain the concept (you may use general knowledge for the analogy)"
+        if include_analogy
+        else "- Set 'analogy' field to null"
     )
     realworld_instruction = (
-        "- CREATE a 'realworld_context' in the JSON showing application in Rwanda (you may use general knowledge for the example)"
-        if include_realworld else "- Set 'realworld_context' field to null"
+        "- CREATE a 'realworld_context' in the JSON showing application "
+        "in Rwanda (you may use general knowledge for the example)"
+        if include_realworld
+        else "- Set 'realworld_context' field to null"
     )
 
     # Format history section if present
@@ -210,7 +224,8 @@ def get_prompt_for_role(user_role: str) -> str:
     return STUDENT_PROMPT
 
 
-CONDENSE_QUESTION_PROMPT = """Given the conversation history and a follow-up question, rephrase the follow-up question to be a standalone question.
+CONDENSE_QUESTION_PROMPT = """Given the conversation history and a follow-up question,
+rephrase the follow-up question to be a standalone question.
 
 Chat History:
 {chat_history}
@@ -219,7 +234,8 @@ Follow Up Input: {question}
 
 Guidance:
 1. If the input is a follow-up question, rewrite it to be standalone.
-2. If the input is a greeting, gratitude, or closing (e.g. "thanks", "bye", "ok"), return it EXACTLY as is.
+2. If the input is a greeting, gratitude, or closing (e.g. "thanks", "bye", "ok"),
+   return it EXACTLY as is.
 
 Respond in this exact JSON format:
 ```json

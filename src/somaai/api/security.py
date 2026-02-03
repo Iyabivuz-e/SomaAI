@@ -55,8 +55,7 @@ class RateLimiter:
 
         # Clean old entries
         self._requests[client_id] = [
-            (ts, count) for ts, count in self._requests[client_id]
-            if ts > window_start
+            (ts, count) for ts, count in self._requests[client_id] if ts > window_start
         ]
 
         # Count requests in window
@@ -213,20 +212,21 @@ def rate_limit(
     Returns:
         Decorator function
     """
+
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(request: Request, *args, **kwargs):
             client_id = key_func(request)
             limiter = get_rate_limiter()
 
-            allowed, remaining = limiter.is_allowed(
-                client_id, limit, window_seconds
-            )
+            allowed, remaining = limiter.is_allowed(client_id, limit, window_seconds)
 
             if not allowed:
                 raise HTTPException(
                     status_code=429,
-                    detail=f"Rate limit exceeded. Try again in {window_seconds} seconds.",
+                    detail=(
+                        f"Rate limit exceeded. Try again in {window_seconds} seconds."
+                    ),
                     headers={
                         "Retry-After": str(window_seconds),
                         "X-RateLimit-Limit": str(limit),
@@ -239,6 +239,7 @@ def rate_limit(
             return response
 
         return wrapper
+
     return decorator
 
 
@@ -265,7 +266,7 @@ async def check_rate_limit(
     if not allowed:
         raise HTTPException(
             status_code=429,
-            detail=f"Rate limit exceeded. Try again in {window_seconds} seconds.",
+            detail=(f"Rate limit exceeded. Try again in {window_seconds} seconds."),
             headers={
                 "Retry-After": str(window_seconds),
                 "X-RateLimit-Limit": str(limit),

@@ -64,7 +64,7 @@ class CitationExtractor:
         sorted_chunks = sorted(
             chunks,
             key=lambda x: float(x.get("rerank_score", x.get("score", 0))),
-            reverse=True
+            reverse=True,
         )
 
         for doc in sorted_chunks:
@@ -88,15 +88,17 @@ class CitationExtractor:
 
             score = float(doc.get("rerank_score", doc.get("score", 0)))
 
-            citations.append(CitationResponse(
-                doc_id=doc_id,
-                doc_title=meta.get("title", "Unknown Document"),
-                page_start=page,
-                page_end=meta.get("page_end", page),
-                chunk_preview=doc.get("content", "")[:200],
-                view_url=self._format_view_url(doc_id, page),
-                relevance_score=round(min(score, 1.0), 3),  # Clamp to 0-1
-            ))
+            citations.append(
+                CitationResponse(
+                    doc_id=doc_id,
+                    doc_title=meta.get("title", "Unknown Document"),
+                    page_start=page,
+                    page_end=meta.get("page_end", page),
+                    chunk_preview=doc.get("content", "")[:200],
+                    view_url=self._format_view_url(doc_id, page),
+                    relevance_score=round(min(score, 1.0), 3),  # Clamp to 0-1
+                )
+            )
 
         return citations, chunks_map
 
@@ -129,15 +131,17 @@ class CitationExtractor:
 
         citations = []
         for citation, chunk, doc in rows:
-            citations.append(CitationResponse(
-                doc_id=chunk.document_id,
-                doc_title=doc.title,
-                page_start=chunk.page_start,
-                page_end=chunk.page_end,
-                chunk_preview=citation.snippet or chunk.content[:200],
-                view_url=self._format_view_url(chunk.document_id, chunk.page_start),
-                relevance_score=citation.relevance_score or 0.0,
-            ))
+            citations.append(
+                CitationResponse(
+                    doc_id=chunk.document_id,
+                    doc_title=doc.title,
+                    page_start=chunk.page_start,
+                    page_end=chunk.page_end,
+                    chunk_preview=citation.snippet or chunk.content[:200],
+                    view_url=self._format_view_url(chunk.document_id, chunk.page_start),
+                    relevance_score=citation.relevance_score or 0.0,
+                )
+            )
 
         return citations
 

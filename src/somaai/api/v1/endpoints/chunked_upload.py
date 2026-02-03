@@ -32,6 +32,7 @@ NAMESPACE = "somaai:upload"
 async def _get_redis():
     """Get Redis client using project's centralized Redis utility."""
     from somaai.utils.redis import get_general_redis
+
     return await get_general_redis()
 
 
@@ -81,12 +82,12 @@ async def init_upload(
     total_chunks: int,
 ) -> dict:
     """Initialize a chunked upload session.
-    
+
     Args:
         filename: Original filename
         total_size: Total file size in bytes
         total_chunks: Expected number of chunks
-        
+
     Returns:
         Upload session info with upload_id and chunk_size
     """
@@ -95,6 +96,7 @@ async def init_upload(
 
     try:
         import aiofiles.os
+
         await aiofiles.os.makedirs(session_dir, exist_ok=True)
     except ImportError:
         session_dir.mkdir(parents=True, exist_ok=True)
@@ -124,18 +126,21 @@ async def upload_chunk(
     chunk: UploadFile = File(...),
 ) -> dict:
     """Upload a single chunk.
-    
+
     Args:
         upload_id: Session ID from init_upload
         chunk_index: Zero-based chunk index
         chunk: Chunk file data
-        
+
     Returns:
         Chunk receipt confirmation
     """
     session = await _get_session(upload_id)
     if not session:
-        raise HTTPException(status_code=404, detail="Upload session not found or expired")
+        raise HTTPException(
+            status_code=404,
+            detail="Upload session not found or expired",
+        )
 
     session_dir = Path(session["session_dir"])
     chunk_path = session_dir / f"chunk_{chunk_index:05d}"
@@ -144,6 +149,7 @@ async def upload_chunk(
 
     try:
         import aiofiles
+
         async with aiofiles.open(chunk_path, "wb") as f:
             await f.write(content)
     except ImportError:
@@ -169,16 +175,19 @@ async def upload_chunk(
 @router.post("/complete/{upload_id}")
 async def complete_upload(upload_id: str) -> dict:
     """Complete upload and reassemble chunks.
-    
+
     Args:
         upload_id: Session ID from init_upload
-        
+
     Returns:
         Final file path and status
     """
     session = await _get_session(upload_id)
     if not session:
-        raise HTTPException(status_code=404, detail="Upload session not found or expired")
+        raise HTTPException(
+            status_code=404,
+            detail="Upload session not found or expired",
+        )
 
     session_dir = Path(session["session_dir"])
     filename = session["filename"]
@@ -191,7 +200,10 @@ async def complete_upload(upload_id: str) -> dict:
     if missing:
         raise HTTPException(
             status_code=400,
-            detail=f"Missing chunks: {sorted(list(missing)[:10])}{'...' if len(missing) > 10 else ''}",
+            detail=(
+                f"Missing chunks: {sorted(list(missing)[:10])}"
+                f"{'...' if len(missing) > 10 else ''}"
+            ),
         )
 
     # Reassemble chunks
@@ -200,6 +212,7 @@ async def complete_upload(upload_id: str) -> dict:
 
     try:
         import aiofiles
+
         async with aiofiles.open(final_path, "wb") as out:
             for chunk_path in chunks:
                 async with aiofiles.open(chunk_path, "rb") as inp:
@@ -230,16 +243,19 @@ async def complete_upload(upload_id: str) -> dict:
 @router.delete("/cancel/{upload_id}")
 async def cancel_upload(upload_id: str) -> dict:
     """Cancel an upload session and cleanup.
-    
+
     Args:
         upload_id: Session ID to cancel
-        
+
     Returns:
         Cancellation confirmation
     """
     session = await _get_session(upload_id)
     if not session:
-        raise HTTPException(status_code=404, detail="Upload session not found or expired")
+        raise HTTPException(
+            status_code=404,
+            detail="Upload session not found or expired",
+        )
 
     session_dir = Path(session["session_dir"])
 

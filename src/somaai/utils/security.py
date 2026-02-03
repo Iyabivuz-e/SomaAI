@@ -64,13 +64,14 @@ class InputSanitizer:
             return ""
 
         # Truncate to max length
-        query = query[:self.max_query_length]
+        query = query[: self.max_query_length]
 
         # Check for injection patterns
         for pattern in INJECTION_PATTERNS:
             if pattern.search(query):
                 if self.log_blocked:
                     import logging
+
                     logging.warning(
                         f"Potential prompt injection blocked: {query[:100]}..."
                     )

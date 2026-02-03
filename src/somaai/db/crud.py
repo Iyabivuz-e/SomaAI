@@ -22,13 +22,13 @@ async def create_job(
     payload: dict,
 ) -> Job:
     """Create a new job record.
-    
+
     Args:
         db: Database session
         job_id: Unique job identifier
         task_name: Name of the task to execute
         payload: Task-specific payload data
-        
+
     Returns:
         Created Job instance
     """
@@ -48,11 +48,11 @@ async def create_job(
 
 async def get_job(db: AsyncSession, job_id: str) -> Job | None:
     """Get job by ID.
-    
+
     Args:
         db: Database session
         job_id: Job identifier
-        
+
     Returns:
         Job instance if found, None otherwise
     """
@@ -69,7 +69,7 @@ async def update_job_status(
     error: str | None = None,
 ) -> Job | None:
     """Update job status.
-    
+
     Args:
         db: Database session
         job_id: Job identifier
@@ -77,7 +77,7 @@ async def update_job_status(
         progress_pct: Progress percentage (0-100)
         result_id: Result ID if completed
         error: Error message if failed
-        
+
     Returns:
         Updated Job instance if found, None otherwise
     """
@@ -105,12 +105,12 @@ async def update_job_progress(
     progress_pct: int,
 ) -> Job | None:
     """Update job progress percentage.
-    
+
     Args:
         db: Database session
         job_id: Job identifier
         progress_pct: Progress percentage (0-100)
-        
+
     Returns:
         Updated Job instance if found, None otherwise
     """
@@ -125,19 +125,16 @@ async def update_job_progress(
 
 async def get_pending_jobs(db: AsyncSession, limit: int = 10) -> list[Job]:
     """Get pending jobs for processing.
-    
+
     Args:
         db: Database session
         limit: Maximum number of jobs to fetch
-        
+
     Returns:
         List of pending Job instances
     """
     result = await db.execute(
-        select(Job)
-        .where(Job.status == "pending")
-        .order_by(Job.created_at)
-        .limit(limit)
+        select(Job).where(Job.status == "pending").order_by(Job.created_at).limit(limit)
     )
     return list(result.scalars().all())
 
@@ -157,7 +154,7 @@ async def create_document(
     subject: str,
 ) -> Document:
     """Create a new document record.
-    
+
     Args:
         db: Database session
         doc_id: Unique document identifier
@@ -166,7 +163,7 @@ async def create_document(
         storage_path: Path to stored file
         grade: Grade level
         subject: Subject
-        
+
     Returns:
         Created Document instance
     """
@@ -186,11 +183,11 @@ async def create_document(
 
 async def get_document(db: AsyncSession, doc_id: str) -> Document | None:
     """Get document by ID.
-    
+
     Args:
         db: Database session
         doc_id: Document identifier
-        
+
     Returns:
         Document instance if found, None otherwise
     """
@@ -204,12 +201,12 @@ async def update_document_processed(
     page_count: int,
 ) -> Document | None:
     """Mark document as processed.
-    
+
     Args:
         db: Database session
         doc_id: Document identifier
         page_count: Number of pages in document
-        
+
     Returns:
         Updated Document instance if found, None otherwise
     """
@@ -233,9 +230,9 @@ async def create_chunks(
     chunks: list[dict],
 ) -> list[str]:
     """Create chunk records for a document.
-    
+
     Uses bulk insert for efficiency (single DB roundtrip).
-    
+
     Args:
         db: Database session
         chunks: List of chunk dicts with keys:
@@ -246,7 +243,7 @@ async def create_chunks(
             - page_end
             - chunk_index
             - embedding_id (optional)
-        
+
     Returns:
         List of created chunk IDs
     """
@@ -278,11 +275,11 @@ async def create_chunks(
 
 async def get_chunk(db: AsyncSession, chunk_id: str):
     """Get chunk by ID.
-    
+
     Args:
         db: Database session
         chunk_id: Chunk identifier
-        
+
     Returns:
         Chunk instance if found, None otherwise
     """
@@ -294,11 +291,11 @@ async def get_chunk(db: AsyncSession, chunk_id: str):
 
 async def get_chunks_by_document(db: AsyncSession, document_id: str) -> list:
     """Get all chunks for a document.
-    
+
     Args:
         db: Database session
         document_id: Document identifier
-        
+
     Returns:
         List of Chunk instances
     """

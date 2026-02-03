@@ -45,6 +45,7 @@ def retry_async(
     Returns:
         Decorated function
     """
+
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -74,7 +75,7 @@ def retry_async(
 
                     # Add jitter
                     if jitter:
-                        delay *= (0.5 + random.random())
+                        delay *= 0.5 + random.random()
 
                     logger.warning(
                         f"{func.__name__} attempt {attempt} failed: {e}. "
@@ -92,6 +93,7 @@ def retry_async(
             )
 
         return wrapper
+
     return decorator
 
 
@@ -145,7 +147,7 @@ def retry_sync(
                     )
 
                     if jitter:
-                        delay *= (0.5 + random.random())
+                        delay *= 0.5 + random.random()
 
                     logger.warning(
                         f"{func.__name__} attempt {attempt} failed: {e}. "
@@ -160,6 +162,7 @@ def retry_sync(
             )
 
         return wrapper
+
     return decorator
 
 

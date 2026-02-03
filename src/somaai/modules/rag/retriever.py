@@ -40,6 +40,7 @@ class Retriever:
         """Get settings."""
         if self._settings is None:
             from somaai.settings import settings
+
             self._settings = settings
         return self._settings
 
@@ -48,6 +49,7 @@ class Retriever:
         """Get or create Qdrant store."""
         if self._store is None:
             from somaai.modules.knowledge.stores.qdrant import QdrantStore
+
             self._store = QdrantStore(self.settings)
         return self._store
 
@@ -173,10 +175,7 @@ class Retriever:
         Returns:
             Filtered documents
         """
-        return [
-            d for d in docs
-            if Decimal(str(d.get("score", 0))) >= min_score
-        ]
+        return [d for d in docs if Decimal(str(d.get("score", 0))) >= min_score]
 
     async def retrieve_for_context(
         self,
@@ -218,8 +217,8 @@ class Retriever:
         char_limit = max_tokens * 4  # Rough char-to-token ratio
 
         for doc in docs:
-            title = doc['metadata'].get('title', 'Source')
-            page = doc['metadata'].get('page_start', '?')
+            title = doc["metadata"].get("title", "Source")
+            page = doc["metadata"].get("page_start", "?")
             source = f"[{title}, Page {page}]"
             chunk = f"{source}\n{doc['content']}\n"
 

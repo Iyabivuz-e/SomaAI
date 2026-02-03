@@ -7,11 +7,11 @@ from somaai.settings import Settings
 
 def get_rag_pipeline(settings: Settings, llm: LLMClient) -> BaseRAGPipeline:
     """Create RAG pipeline based on settings.
-    
+
     Args:
         settings: Application settings
         llm: Initialized LLM client
-        
+
     Returns:
         Configured RAG pipeline instance
     """

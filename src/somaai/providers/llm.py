@@ -20,17 +20,20 @@ class MockLLMProvider:
 
     async def generate(self, prompt: str) -> str:
         import json
-        return json.dumps({
-            "answer": (
-                "MOCK_ANSWER: You are SomaAI, an educational assistant for Rwandan "
-                "students and teachers. You help with curriculum."
-            ),
-            "sufficiency": "sufficient",
-            "is_grounded": True,
-            "confidence": 1.0,
-            "analogy": None,
-            "realworld_context": None
-        })
+
+        return json.dumps(
+            {
+                "answer": (
+                    "MOCK_ANSWER: You are SomaAI, an educational assistant for Rwandan "
+                    "students and teachers. You help with curriculum."
+                ),
+                "sufficiency": "sufficient",
+                "is_grounded": True,
+                "confidence": 1.0,
+                "analogy": None,
+                "realworld_context": None,
+            }
+        )
 
     async def generate_stream(self, prompt: str) -> AsyncIterator[str]:
         text = await self.generate(prompt)
@@ -75,9 +78,7 @@ class GroqLLMProvider:
     async def generate(self, prompt: str) -> str:
         """Generate text using Groq API."""
         response = await self.client.chat.completions.create(
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
+            messages=[{"role": "user", "content": prompt}],
             model=self.model,
             response_format={"type": "json_object"},
             temperature=0.1,

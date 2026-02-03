@@ -26,8 +26,9 @@ if TYPE_CHECKING:
     from somaai.providers.llm import LLMClient
     from somaai.settings import Settings
 
-import logging
 import json
+import logging
+
 from somaai.modules.rag.prompts import CONDENSE_QUESTION_PROMPT
 
 logger = logging.getLogger(__name__)
@@ -45,8 +46,7 @@ class BaseRAGPipeline(Protocol):
         session_id: str | None = None,
         preferences: dict | None = None,
         history: str = "",
-    ) -> dict:
-        ...
+    ) -> dict: ...
 
 
 class RAGPipeline:
@@ -75,6 +75,7 @@ class RAGPipeline:
         """Get settings."""
         if self._settings is None:
             from somaai.settings import settings
+
             self._settings = settings
         return self._settings
 
@@ -115,6 +116,7 @@ class RAGPipeline:
         try:
             # 0. Check response cache
             from somaai.cache.rag import get_response_cache
+
             cache = get_response_cache()
             cached_response = await cache.get(query, grade, subject)
             if cached_response:
@@ -159,7 +161,10 @@ class RAGPipeline:
 
             # 4. Check if we have sufficient context
             if not ranked_docs:
-                logger.info("No documents found. Proceeding to generator for potential chit-chat handling.")
+                logger.info(
+                    "No documents found. Proceeding to generator for potential "
+                    "chit-chat handling."
+                )
                 # We do NOT return insufficient_context here anymore.
                 # We let the Generator handle it (e.g. for greetings).
                 # return self._insufficient_context_response(query, grade, subject)
@@ -191,7 +196,7 @@ class RAGPipeline:
                 "analogy": result.get("analogy"),
                 "realworld_context": result.get("realworld_context"),
                 "created_at": datetime.utcnow(),
-                "retrieved_chunks": [], # For backward compatibility if needed, but we use chunks_map now
+                "retrieved_chunks": [],  # Backward compatibility, we use chunks_map now
             }
 
             # 8. Cache response if high quality
@@ -238,24 +243,25 @@ class RAGPipeline:
         """
         try:
             from somaai.providers.llm import get_llm
+
             llm = get_llm(self.settings)
 
             prompt = CONDENSE_QUESTION_PROMPT.format(
-                chat_history=history,
-                question=query
+                chat_history=history, question=query
             )
 
             response_json = await llm.generate(prompt)
-            
+
             # Helper to extract JSON if surrounded by markdown
             cleaned_json = response_json
             if "```json" in cleaned_json:
                 import re
+
                 match = re.search(r"```json\s*(.*?)\s*```", cleaned_json, re.DOTALL)
                 if match:
                     cleaned_json = match.group(1)
             elif "```" in cleaned_json:
-                 cleaned_json = cleaned_json.strip("`")
+                cleaned_json = cleaned_json.strip("`")
 
             data = json.loads(cleaned_json)
             rewritten = data.get("standalone_question", query)
@@ -355,7 +361,9 @@ class RAGPipeline:
         reranker_available = self.reranker.is_available
 
         return {
-            "status": "healthy" if retriever_health.get("status") == "healthy" else "degraded",
+            "status": (
+                "healthy" if retriever_health.get("status") == "healthy" else "degraded"
+            ),
             "retriever": retriever_health,
             "reranker": {"available": reranker_available},
         }
@@ -410,23 +418,23 @@ class MockRAGPipeline:
         # 1. Try Real Retrieval first (Qdrant)
         try:
             real_docs = await self.real_retriever.retrieve_with_fallback(
-                query=query,
-                grade=grade,
-                subject=subject,
-                top_k=5
+                query=query, grade=grade, subject=subject, top_k=5
             )
             if real_docs:
                 # Format for generator
-                docs_dicts = [{
-                    "doc_id": d["metadata"].get("doc_id", "unknown"),
-                    "doc_title": d["metadata"].get("title", "Unknown"),
-                    "page_start": d["metadata"].get("page_start", 1),
-                    "page_end": d["metadata"].get("page_end", 1),
-                    "snippet": d["content"],
-                    "content": d["content"],
-                    "score": d.get("score", 0),
-                    "metadata": d["metadata"]
-                } for d in real_docs]
+                docs_dicts = [
+                    {
+                        "doc_id": d["metadata"].get("doc_id", "unknown"),
+                        "doc_title": d["metadata"].get("title", "Unknown"),
+                        "page_start": d["metadata"].get("page_start", 1),
+                        "page_end": d["metadata"].get("page_end", 1),
+                        "snippet": d["content"],
+                        "content": d["content"],
+                        "score": d.get("score", 0),
+                        "metadata": d["metadata"],
+                    }
+                    for d in real_docs
+                ]
         except Exception:
             # Ignore real retriever errors in Mock mode
             pass
@@ -453,21 +461,24 @@ class MockRAGPipeline:
             )
             chunks = await self.mock_retriever.retrieve(rag_input)
 
-            docs_dicts = [{
-                "doc_id": c.doc_id,
-                "doc_title": c.doc_title,
-                "page_start": c.page_start,
-                "page_end": c.page_end,
-                "snippet": c.snippet,
-                "content": c.snippet,
-                "score": c.score,
-                "metadata": {
+            docs_dicts = [
+                {
                     "doc_id": c.doc_id,
-                    "title": c.doc_title,
+                    "doc_title": c.doc_title,
                     "page_start": c.page_start,
                     "page_end": c.page_end,
+                    "snippet": c.snippet,
+                    "content": c.snippet,
+                    "score": c.score,
+                    "metadata": {
+                        "doc_id": c.doc_id,
+                        "title": c.doc_title,
+                        "page_start": c.page_start,
+                        "page_end": c.page_end,
+                    },
                 }
-            } for c in chunks]
+                for c in chunks
+            ]
 
         # 3. Generate answer using the uniform generator
         context_strs = [d["content"] for d in docs_dicts]
@@ -485,6 +496,7 @@ class MockRAGPipeline:
 
         # 4. Build citations
         from somaai.modules.chat.citations import get_citation_extractor
+
         extractor = get_citation_extractor()
         citations, chunks_map = extractor.extract_citations(
             docs_dicts, top_k=len(docs_dicts)
@@ -494,16 +506,19 @@ class MockRAGPipeline:
             # Fallback: Cite all retrieved docs if Mock LLM didn't cite any
             # This ensures we see citations in the test output
             from somaai.contracts.chat import CitationResponse
+
             for i, d in enumerate(docs_dicts):
-                citations.append(CitationResponse(
-                    doc_id=d["doc_id"],
-                    doc_title=d["doc_title"],
-                    page_start=d["page_start"],
-                    page_end=d["page_end"],
-                    chunk_preview=d["snippet"][:200],
-                    view_url=f"/documents/{d['doc_id']}/view#page={d['page_start']}",
-                    relevance_score=float(d.get("score", 0))
-                ))
+                citations.append(
+                    CitationResponse(
+                        doc_id=d["doc_id"],
+                        doc_title=d["doc_title"],
+                        page_start=d["page_start"],
+                        page_end=d["page_end"],
+                        chunk_preview=d["snippet"][:200],
+                        view_url=f"/documents/{d['doc_id']}/view#page={d['page_start']}",
+                        relevance_score=float(d.get("score", 0)),
+                    )
+                )
 
         return {
             "message_id": generate_id(),

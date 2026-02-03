@@ -49,7 +49,9 @@ def get_qdrant_client(settings: Settings) -> QdrantClient:
     return _QDRANT_CLIENT
 
 
-def get_embeddings_model(settings: Settings) -> HuggingFaceEmbeddings | OpenAIEmbeddings:
+def get_embeddings_model(
+    settings: Settings,
+) -> HuggingFaceEmbeddings | OpenAIEmbeddings:
     """Get singleton embeddings model.
 
     Args:
@@ -70,8 +72,8 @@ def get_embeddings_model(settings: Settings) -> HuggingFaceEmbeddings | OpenAIEm
             logger.info("Creating HuggingFace embeddings model (local)")
             _EMBEDDINGS_MODEL = HuggingFaceEmbeddings(
                 model_name="all-MiniLM-L6-v2",
-                model_kwargs={'device': 'cpu'},
-                encode_kwargs={'normalize_embeddings': True}
+                model_kwargs={"device": "cpu"},
+                encode_kwargs={"normalize_embeddings": True},
             )
     return _EMBEDDINGS_MODEL
 
@@ -123,12 +125,12 @@ class QdrantStore(VectorStore):
                     logger.info(f"Detected embedding dimension: {dimension}")
 
                     from qdrant_client.models import Distance, VectorParams
+
                     self.client.create_collection(
                         collection_name=collection_name,
                         vectors_config=VectorParams(
-                            size=dimension,
-                            distance=Distance.COSINE
-                        )
+                            size=dimension, distance=Distance.COSINE
+                        ),
                     )
                     logger.info(f"Created collection {collection_name}")
                 except Exception as e:

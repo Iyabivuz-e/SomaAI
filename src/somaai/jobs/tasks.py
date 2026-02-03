@@ -135,7 +135,7 @@ async def generate_quiz_task(
         await update_job_progress(job_id, 30, "Generating questions")
 
         # Generate questions
-        items = await generator.generate_questions(
+        await generator.generate_questions(
             topic_ids=topic_ids,
             difficulty=difficulty,
             num_questions=num_questions,

@@ -52,6 +52,7 @@ class LLMGenerator(BaseGenerator):
         """Get settings."""
         if self._settings is None:
             from somaai.settings import settings
+
             self._settings = settings
         return self._settings
 
@@ -60,6 +61,7 @@ class LLMGenerator(BaseGenerator):
         """Get LLM client."""
         if self._llm is None:
             from somaai.providers.llm import get_llm
+
             self._llm = get_llm(self.settings)
         return self._llm
 
@@ -112,7 +114,10 @@ class LLMGenerator(BaseGenerator):
         except Exception as e:
             logger.error(f"LLM generation failed: {str(e)}")
             return {
-                "answer": "I encountered an error while processing your request. Please try refining your question.",
+                "answer": (
+                    "I encountered an error while processing your request. "
+                    "Please try refining your question."
+                ),
                 "sufficiency": "insufficient",
                 "is_grounded": False,
                 "confidence": 0.0,
@@ -202,13 +207,20 @@ class LLMGenerator(BaseGenerator):
             "citations_validated": [],
             "citations_all_valid": False,
             "reasoning": "",
-            "analogy": self._extract_section(response, "Analogy") if include_analogy else None,
-            "realworld_context": self._extract_section(response, "Real-World") if include_realworld else None,
+            "analogy": (
+                self._extract_section(response, "Analogy") if include_analogy else None
+            ),
+            "realworld_context": (
+                self._extract_section(response, "Real-World")
+                if include_realworld
+                else None
+            ),
         }
 
     def _extract_section(self, text: str, section_name: str) -> str | None:
         """Extract a section from the response."""
         import re
+
         pattern = rf"\*\*{section_name}.*?\*\*:?\s*(.*?)(?=\n\n\*\*|\Z)"
         match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
         return match.group(1).strip() if match else None
