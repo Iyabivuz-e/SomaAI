@@ -24,6 +24,9 @@ jobs:
       
       - name: Install dependencies with dev tools
         run: uv sync --extra dev
-      
+
+      - name: Upgrade pip to fix CVE
+        run: uv run pip install --upgrade pip>=26.0
+
       - name: Run security audit
-        run: uv run pip-audit
+        run: uv run pip-audit --skip-editable

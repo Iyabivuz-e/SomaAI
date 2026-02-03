@@ -36,7 +36,7 @@ class TestChatEndpoints:
 
         # Mock LLM should return a specific format answer
         assert data["answer"].startswith("MOCK_ANSWER:")
-``
+
         # Citations should be present because "photosynthesis" is in MOCK_CHUNKS
         assert len(data["citations"]) > 0
         citation = data["citations"][0]
