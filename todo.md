@@ -1,13 +1,23 @@
 Todo:::::
+5. Refactor the models to SQLAlchemy 2.0 style (Option 2), which provides:
+    - Better type safety
+    - Better IDE autocomplete
+    - No need for casts
 
+7. Analogies are not being shown and passed in the response.
 
- 
- 
- 30
-        request: FeedbackRequest,
-        actor_id: str | None = None,
-    ) -> FeedbackResponse:
-Copilot AI
-yesterday
+## To run the ingestion on the command line
+curl -X 'POST' \
+  'http://localhost:8000/api/v1/ingest' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: multipart/form-data' \
+  -F 'file=@uploads/Name of the document (ex: Computer Science S6 SB.pdf)' \
+  -F 'grade=S6' \
+  -F 'subject=name of the subject as in the db(ex: subjectcomputer_science)'
 
-actor_id is typed as str | None and passed directly into the Feedback model, but the actor_id column is declared nullable=False, so calling this service with actor_id=None would violate the DB constraint. Either make actor_id a required str in the service API (matching the DB schema) or add defensive handling for None (e.g., generate a fallback or raise a clear error) to keep the type annotation and runtime behavior consistent.
+## Monitor the jobs
+curl -X 'GET' \
+  'http://localhost:8000/api/v1/ingest/jobs/"job id (ex: 635c83cc-57e9-4f81-b8e4-2afe38245167)' \
+  -H 'accept: application/json'
+
+or  "docker logs -f somaai-app"

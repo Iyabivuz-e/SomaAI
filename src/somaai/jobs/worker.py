@@ -1,70 +1,114 @@
-"""Background job worker.
+"""Background job worker using ARQ.
 
 Simple Redis-backed polling worker for processing background jobs.
 Run separately from the main application.
+
+Usage:
+    arq somaai.jobs.worker.WorkerSettings
+
+    OR
+
+    python -m somaai.jobs.worker
 """
 
-import asyncio
+from __future__ import annotations
+
+import logging
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    pass
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
-class JobWorker:
-    """Background job worker.
+# Task functions must be top-level coroutines for arq
+async def ingest_document(ctx: dict, job_id: str, **kwargs) -> dict:
+    """Document ingestion task wrapper."""
+    from somaai.jobs.tasks import ingest_document_task
 
-    Polls the job queue and executes pending tasks.
+    await ingest_document_task(job_id=job_id, **kwargs)
+    return {"status": "completed"}
 
-    Usage:
-        worker = JobWorker()
-        await worker.start()
+
+async def generate_quiz(ctx: dict, job_id: str, **kwargs) -> dict:
+    """Quiz generation task wrapper."""
+    from somaai.jobs.tasks import generate_quiz_task
+
+    await generate_quiz_task(job_id=job_id, **kwargs)
+    return {"status": "completed"}
+
+
+def _get_redis_settings():
+    """Get Redis settings for ARQ worker.
+
+    Must be called at class definition time to set the class attribute.
+    """
+    from arq.connections import RedisSettings
+
+    from somaai.settings import settings
+
+    # Parse Redis URL for jobs database
+    redis_url = settings.redis_jobs_url
+    if "://" in redis_url:
+        parts = redis_url.split("://")[1]
+        host_port = parts.split("/")[0]
+        host = host_port.split(":")[0]
+        port = int(host_port.split(":")[1]) if ":" in host_port else 6379
+        db = int(parts.split("/")[1]) if "/" in parts else 1
+    else:
+        host, port, db = "localhost", 6379, 1
+
+    return RedisSettings(
+        host=host,
+        port=port,
+        database=db,
+        password=settings.redis_password or None,
+    )
+
+
+class WorkerSettings:
+    """ARQ Worker configuration.
+
+    This class is auto-discovered by arq CLI.
+    Run with: arq somaai.jobs.worker.WorkerSettings
     """
 
-    def __init__(
-        self,
-        poll_interval: float = 1.0,
-        batch_size: int = 5,
-    ):
-        """Initialize worker.
+    # Redis settings - must be a class attribute, not a method
+    # ARQ accesses this directly as WorkerSettings.redis_settings.host
+    redis_settings = _get_redis_settings()
 
-        Args:
-            poll_interval: Seconds between queue polls
-            batch_size: Number of jobs to fetch per poll
-        """
-        pass
+    # Register task functions
+    functions = [ingest_document, generate_quiz]
 
-    async def start(self) -> None:
-        """Start the worker loop.
+    # Retry configuration
+    max_tries = 3
+    job_timeout = 3600  # 1 hour max per job
 
-        Continuously polls for pending jobs and executes them.
-        Runs until stopped or interrupted.
-        """
-        pass
+    # Concurrency
+    max_jobs = 10
 
-    async def stop(self) -> None:
-        """Stop the worker gracefully.
-
-        Waits for current job to complete before stopping.
-        """
-        pass
-
-    async def process_job(self, job: dict) -> None:
-        """Process a single job.
-
-        Looks up task in registry and executes it.
-        Updates job status on completion or failure.
-
-        Args:
-            job: Job record from queue
-        """
-        pass
+    # Health check
+    health_check_interval = 30
 
 
-async def run_worker() -> None:
+def run_worker() -> None:
     """Entry point for running the worker.
+
+    This is a SYNCHRONOUS function that creates its own event loop.
+    Do NOT call this from within an async context.
 
     Usage:
         python -m somaai.jobs.worker
     """
-    pass
+    from arq import run_worker as arq_run_worker
+
+    logger.info("Starting ARQ worker...")
+
+    # run_worker is synchronous and manages its own event loop
+    arq_run_worker(WorkerSettings)
 
 
 if __name__ == "__main__":
-    asyncio.run(run_worker())
+    run_worker()

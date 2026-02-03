@@ -127,7 +127,7 @@ class FeedbackService:
             useful=cast(bool, feedback.useful),
             text=cast(str | None, feedback.text),
             tags=cast(list[str] | None, feedback.tags),
-            created_at=feedback.created_at,  # type: ignore[arg-type]
+            created_at=feedback.created_at,
             user_role=user_role,
         )
 

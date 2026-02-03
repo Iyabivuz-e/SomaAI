@@ -143,22 +143,70 @@ def cached_retrieval(
 
 # Fallback in-memory cache for development without Redis
 class SimpleCache:
-    """Simple in-memory cache fallback when Redis is unavailable."""
+    """In-memory cache fallback with TTL eviction.
+
+    Prevents unbounded memory growth by:
+    - Storing expiration times with entries
+    - Evicting expired entries on access
+    - Limiting max entries (LRU eviction)
+    """
+
+    MAX_ENTRIES = 1000  # Prevent unbounded growth
 
     def __init__(self):
-        self._cache = {}
+        self._cache: dict[str, tuple[float, any]] = {}  # {key: (expires_at, value)}
+        self._access_order: list[str] = []  # For LRU eviction
+
+    def _evict_expired(self) -> None:
+        """Remove expired entries."""
+        import time
+
+        now = time.time()
+        expired = [k for k, (exp, _) in self._cache.items() if exp < now]
+        for key in expired:
+            self._cache.pop(key, None)
+            if key in self._access_order:
+                self._access_order.remove(key)
+
+    def _evict_lru(self) -> None:
+        """Evict least recently used if over limit."""
+        while len(self._cache) >= self.MAX_ENTRIES and self._access_order:
+            oldest = self._access_order.pop(0)
+            self._cache.pop(oldest, None)
 
     def cached(self, ttl: int = 3600):
-        """Simple caching decorator."""
+        """Caching decorator with TTL."""
+        import time
 
         def decorator(func):
             @wraps(func)
             async def wrapper(*args, **kwargs):
+                self._evict_expired()
+
                 key = _build_key(func.__name__, *args, **kwargs)
+                now = time.time()
+
                 if key in self._cache:
-                    return self._cache[key]
+                    expires_at, value = self._cache[key]
+                    if expires_at > now:
+                        # Update access order
+                        if key in self._access_order:
+                            self._access_order.remove(key)
+                        self._access_order.append(key)
+                        return value
+                    else:
+                        # Expired
+                        self._cache.pop(key, None)
+
                 result = await func(*args, **kwargs)
-                self._cache[key] = result
+
+                # Evict LRU if needed
+                self._evict_lru()
+
+                # Store with expiration
+                self._cache[key] = (now + ttl, result)
+                self._access_order.append(key)
+
                 return result
 
             return wrapper
@@ -168,6 +216,7 @@ class SimpleCache:
     def clear(self):
         """Clear all cached items."""
         self._cache.clear()
+        self._access_order.clear()
 
 
 # Fallback cache instance
