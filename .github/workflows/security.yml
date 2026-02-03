@@ -23,7 +23,7 @@ jobs:
         run: uv python install 3.11
       
       - name: Install dependencies with dev tools
-        run: uv sync --extra dev
+        run: uv sync --extra dev --extra rag --extra vectordb --extra cache
 
       - name: Upgrade pip to fix CVE
         run: uv run pip install --upgrade pip>=26.0
